@@ -1,11 +1,12 @@
 // =====================================================================
-// MENUS.JS — Sistema de Menus Profissional AAA + Pause In-Game Distinto
+// MENUS.JS — Menus AAA + Seletor dos Mapas de Level Design
 // =====================================================================
 
 let activeTab = 'operation';
+let selectedSkinWeaponKey = 'rifle';
 
 function attachUiSoundEvents() {
-  document.querySelectorAll('.tabBtn, .mapCardAAA, .storeCardAAA, .btnAAA, button').forEach(el => {
+  document.querySelectorAll('.tabBtn, .mapCardAAA, .storeCardAAA, .skinCardAAA, .btnAAA, button').forEach(el => {
     if (el.dataset.soundBound) return;
     el.dataset.soundBound = 'true';
     el.addEventListener('mouseenter', () => playSound('ui_hover'));
@@ -17,9 +18,6 @@ function renderMenuLayout() {
   const overlay = document.getElementById('overlay');
   if (!overlay) return;
 
-  const map = MAPS[selectedMap];
-  const accuracy = player.accuracy.shots > 0 ? Math.round(player.accuracy.hits / player.accuracy.shots * 100) : 0;
-
   overlay.style.display = 'flex';
   overlay.classList.remove('hidden');
 
@@ -30,8 +28,8 @@ function renderMenuLayout() {
         <div class="sub">Operação Queda Fantasma</div>
       </div>
       <div class="menuTabs">
-        <button class="tabBtn ${activeTab === 'operation' ? 'active' : ''}" onclick="switchTab('operation')">OPERAÇÃO</button>
-        <button class="tabBtn ${activeTab === 'arsenal' ? 'active' : ''}" onclick="switchTab('arsenal')">ARSENAL</button>
+        <button class="tabBtn ${activeTab === 'operation' ? 'active' : ''}" onclick="switchTab('operation')">OPERAÇÕES DE LEVEL DESIGN</button>
+        <button class="tabBtn ${activeTab === 'arsenal' ? 'active' : ''}" onclick="switchTab('arsenal')">ARSENAL & SKINS</button>
         <button class="tabBtn ${activeTab === 'stats' ? 'active' : ''}" onclick="switchTab('stats')">OPERADOR</button>
         <button class="tabBtn ${activeTab === 'settings' ? 'active' : ''}" onclick="switchTab('settings')">CONFIGURAÇÕES</button>
       </div>
@@ -57,15 +55,17 @@ function renderTabContent() {
   if (activeTab === 'operation') {
     const maps = Object.entries(MAPS).map(([key, m]) => `
       <div class="mapCardAAA ${key === selectedMap ? 'selected' : ''}" onclick="selectMap('${key}')">
-        <b>${m.name}</b>
-        <small>${m.subtitle}</small>
+        <b style="color:#4fd8ff;">${m.name}</b>
+        <small style="display:block; margin-bottom:6px;">${m.subtitle}</small>
+        <small style="color:#ffcc44;">🎯 Modo: ${m.mode || 'Combate Tático'}</small><br>
+        <small style="color:#9fb3d9;">📐 Tamanho: ${m.size || 'Médio'}</small>
       </div>
     `).join('');
 
     container.innerHTML = `
-      <h2>TEATRO DE OPERAÇÕES</h2>
-      <p class="desc">Escolha a zona de inserção, prepare o salto de alta altitude e elimine as forças hostis.</p>
-      <div class="menuGridAAA">${maps}</div>
+      <h2>TEATRO DE OPERAÇÕES DE LEVEL DESIGN</h2>
+      <p class="desc">Selecione o mapa projetado para o blockout. Cada ambiente possui rotas estratégicas, chokepoints e mecânicas interativas próprias.</p>
+      <div class="menuGridAAA" style="grid-template-columns:repeat(3,1fr);">${maps}</div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:24px;">
         <span class="credits" style="font-family:'Orbitron',sans-serif; font-size:14px;">CRÉDITOS: <strong style="color:#ffcc44;">${credits}</strong></span>
         <div style="display:flex; gap:12px;">
@@ -75,38 +75,36 @@ function renderTabContent() {
       </div>
     `;
   } else if (activeTab === 'arsenal') {
-    const storeCards = WEAPONS.map((w, i) => `
-      <div class="storeCardAAA ${unlockedWeapons.has(w.key) ? 'owned' : ''}">
-        <b>${w.name}</b>
-        <small>${w.damage} Dano · ${w.magSize} Projéteis${w.pellets ? ' · ' + w.pellets + ' Pellets' : ''}<br>
-        ${unlockedWeapons.has(w.key) ? '<span style="color:#4fd8ff;">ADQUIRIDA</span>' : w.price + ' Créditos'}</small><br>
-        <button class="btnAAA secondary" style="margin-top:12px; font-size:12px; padding:8px 16px;" data-buy="${i}" ${unlockedWeapons.has(w.key) ? 'disabled' : ''}>
-          ${unlockedWeapons.has(w.key) ? 'DESBLOQUEADA' : 'COMPRAR'}
-        </button>
-      </div>
+    const weaponButtons = WEAPONS.map(w => `
+      <button class="tabBtn ${w.key === selectedSkinWeaponKey ? 'active' : ''}" onclick="selectSkinWeapon('${w.key}')">${w.name.toUpperCase()}</button>
     `).join('');
 
+    const skinCards = Object.entries(SKINS).map(([sKey, s]) => {
+      const isUnlocked = unlockedSkins.has(`${selectedSkinWeaponKey}_${sKey}`) || sKey === 'default';
+      const isEquipped = equippedSkins[selectedSkinWeaponKey] === sKey;
+
+      return `
+        <div class="skinCardAAA ${isEquipped ? 'equipped' : isUnlocked ? 'unlocked' : ''}">
+          <b style="color:${s.color ? '#' + s.color.toString(16).padStart(6, '0') : '#fff'};">${s.name}</b>
+          <small>${isEquipped ? 'EQUIPADA' : isUnlocked ? 'DESBLOQUEADA' : s.price + ' Créditos'}</small><br>
+          <button class="btnAAA secondary" style="margin-top:10px; font-size:11px; padding:6px 14px;"
+            onclick="handleSkinClick('${selectedSkinWeaponKey}', '${sKey}', ${s.price}, ${isUnlocked}, ${isEquipped})">
+            ${isEquipped ? 'EM USO' : isUnlocked ? 'EQUIPAR' : 'COMPRAR'}
+          </button>
+        </div>
+      `;
+    }).join('');
+
     container.innerHTML = `
-      <h2>ARSENAL TÁTICO</h2>
-      <p class="desc">Adquira e desbloqueie armamento militar com seus créditos de combate.</p>
-      <div class="menuGridAAA">${storeCards}</div>
+      <h2>ARSENAL & CUSTOMIZAÇÃO DE SKINS</h2>
+      <p class="desc">Personalize o acabamento e estilo visual das suas armas em 3D.</p>
+      <div style="display:flex; gap:8px; margin-bottom:20px;">${weaponButtons}</div>
+      <div class="menuGridAAA" style="grid-template-columns:repeat(3,1fr);">${skinCards}</div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
         <span class="credits" style="font-family:'Orbitron',sans-serif; font-size:14px;">CRÉDITOS DISPONÍVEIS: <strong style="color:#ffcc44;">${credits}</strong></span>
         <button class="btnAAA secondary" onclick="switchTab('operation')">VOLTAR</button>
       </div>
     `;
-
-    container.querySelectorAll('[data-buy]').forEach(btn => {
-      btn.onclick = () => {
-        const w = WEAPONS[+btn.dataset.buy];
-        if (credits < w.price) { showStatus('CRÉDITOS INSUFICIENTES'); return; }
-        credits -= w.price;
-        unlockedWeapons.add(w.key);
-        switchWeapon(+btn.dataset.buy);
-        saveProgress();
-        renderTabContent();
-      };
-    });
   } else if (activeTab === 'stats') {
     const accuracy = player.accuracy.shots > 0 ? Math.round(player.accuracy.hits / player.accuracy.shots * 100) : 0;
     container.innerHTML = `
@@ -149,11 +147,31 @@ function renderTabContent() {
         </div>
       </div>
     `;
-
     bindSettingsEvents();
   }
 
   attachUiSoundEvents();
+}
+
+function selectSkinWeapon(weaponKey) {
+  selectedSkinWeaponKey = weaponKey;
+  renderTabContent();
+}
+
+function handleSkinClick(weaponKey, skinKey, price, isUnlocked, isEquipped) {
+  if (isEquipped) return;
+
+  if (!isUnlocked) {
+    if (credits < price) { showStatus('CRÉDITOS INSUFICIENTES'); return; }
+    credits -= price;
+    unlockedSkins.add(`${weaponKey}_${skinKey}`);
+  }
+
+  equippedSkins[weaponKey] = skinKey;
+  updateAllWeaponSkins();
+  saveProgress();
+  showStatus(`SKIN ${SKINS[skinKey].name.toUpperCase()} EQUIPADA!`, 1500);
+  renderTabContent();
 }
 
 function bindSettingsEvents() {
@@ -205,7 +223,6 @@ function showMainMenu() {
 }
 
 function beginGame() {
-  // OCULTAR O MENU INICIAL TOTALMENTE
   const overlay = document.getElementById('overlay');
   if (overlay) {
     overlay.classList.add('hidden');
@@ -259,9 +276,6 @@ function beginGame() {
   animate();
 }
 
-// =====================================================================
-// MENU DE PAUSA IN-GAME (DISTINTO DO INICIAL)
-// =====================================================================
 function renderPauseMenuContent() {
   const pauseMenu = document.getElementById('pauseMenu');
   if (!pauseMenu) return;
@@ -326,7 +340,6 @@ function renderPauseMenuContent() {
     </div>
   `;
 
-  // Bind pause settings
   const pSens = document.getElementById('pauseSens');
   const pFov = document.getElementById('pauseFov');
   const pVol = document.getElementById('pauseVol');

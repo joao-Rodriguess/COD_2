@@ -1,5 +1,5 @@
 // =====================================================================
-// SHOOTING.JS — Tiro, Efeitos, Recarga + GRANADAS
+// SHOOTING.JS — Tiro, Recarga, Granadas & AIR DROP TÁTICO
 // =====================================================================
 
 function worldMuzzlePosition(w) {
@@ -33,7 +33,7 @@ function spawnHitBurst(pos, color) {
   hitEffects.push({ pts, velocities, life: 0.5, maxLife: 0.5 });
 }
 
-// --- Ejeção de cartucho ---
+// --- Cartucho Ejetado ---
 function spawnShellCasing() {
   const shellGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.04, 6);
   const shellMat = new THREE.MeshStandardMaterial({ color: 0xd4a836, metalness: 0.8, roughness: 0.3 });
@@ -81,11 +81,9 @@ function doShoot() {
   flashSprite.material.rotation = Math.random() * Math.PI;
   setTimeout(() => { flashSprite.visible = false; }, 45);
 
-  // Ejetar cartucho
   spawnShellCasing();
 
-  // Spread melhor quando agachado
-  const spreadMult = player.crouching ? 0.6 : 1.0;
+  const spreadMult = player.crouching ? 0.6 : player.isSliding ? 1.2 : 1.0;
 
   const pellets = w.pellets || 1;
   for (let pellet = 0; pellet < pellets; pellet++) {
@@ -119,7 +117,6 @@ function doShoot() {
     if (pellet === 0) spawnTracer(worldMuzzlePosition(w), dir, hitDist);
   }
 
-  // Screen shake leve ao atirar
   addScreenShake(w.kick * 0.3);
 }
 
@@ -130,7 +127,6 @@ function registerHit(bot, dmg, point, isHeadshot = false) {
   playSound('hit');
   spawnHitBurst(point, 0xff3838);
 
-  // Bot esquiva ao receber dano (nova mecânica)
   if (bot.alive && bot.health > 0) {
     bot.dodgeTimer = 0.4;
     bot.dodgeDir = new THREE.Vector3((Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2).normalize();
@@ -184,7 +180,6 @@ function throwGrenade() {
   updateGrenadeHud();
   updateInventory();
 
-  // Criar mesh da granada
   const grenadeMesh = new THREE.Mesh(
     new THREE.SphereGeometry(0.12, 8, 8),
     new THREE.MeshStandardMaterial({ color: 0x3a4a2a, roughness: 0.7, metalness: 0.3 })
@@ -215,13 +210,11 @@ function updateGrenades(dt) {
     const g = grenadeObjects[i];
     g.life -= dt;
 
-    // Física
     g.velocity.y += GRAVITY * dt;
     g.mesh.position.addScaledVector(g.velocity, dt);
     g.mesh.rotation.x += dt * 8;
     g.mesh.rotation.z += dt * 5;
 
-    // Quicar no chão
     const groundY = getTerrainHeight(g.mesh.position.x, g.mesh.position.z);
     if (g.mesh.position.y < groundY + 0.15) {
       g.mesh.position.y = groundY + 0.15;
@@ -231,7 +224,6 @@ function updateGrenades(dt) {
       g.bounces++;
     }
 
-    // Explodir
     if (g.life <= 0) {
       explodeGrenade(g.mesh.position.clone());
       scene.remove(g.mesh);
@@ -244,13 +236,11 @@ function explodeGrenade(pos) {
   playSound('explosion');
   addScreenShake(0.06);
 
-  // Efeito visual: esfera de luz
   const explosionLight = new THREE.PointLight(0xff6622, 5, 20);
   explosionLight.position.copy(pos);
   scene.add(explosionLight);
   setTimeout(() => scene.remove(explosionLight), 300);
 
-  // Partículas de explosão
   for (let i = 0; i < 3; i++) {
     const burstPos = pos.clone();
     burstPos.x += (Math.random() - 0.5) * 2;
@@ -260,7 +250,6 @@ function explodeGrenade(pos) {
     spawnHitBurst(burstPos, 0xffaa44);
   }
 
-  // Esfera de explosão visual
   const sphereGeo = new THREE.SphereGeometry(GRENADE_RADIUS * 0.3, 12, 12);
   const sphereMat = new THREE.MeshBasicMaterial({
     color: 0xff4400, transparent: true, opacity: 0.6,
@@ -275,7 +264,6 @@ function explodeGrenade(pos) {
     isExplosion: true
   });
 
-  // Dano em área nos bots
   bots.forEach(bot => {
     if (!bot.alive) return;
     const dist = bot.group.position.distanceTo(pos);
@@ -289,10 +277,75 @@ function explodeGrenade(pos) {
     }
   });
 
-  // Dano no jogador
   const playerDist = yawObject.position.distanceTo(pos);
   if (playerDist < GRENADE_RADIUS && player.alive) {
     const dmg = GRENADE_DAMAGE * 0.5 * (1 - playerDist / GRENADE_RADIUS);
     damagePlayer(dmg);
+  }
+}
+
+// =====================================================================
+// AIR DROP TÁTICO COM PARAQUEDAS
+// =====================================================================
+function spawnAirDrop() {
+  const x = (Math.random() * 2 - 1) * (WORLD_SIZE - 40);
+  const z = (Math.random() * 2 - 1) * (WORLD_SIZE - 40);
+  const startY = 80;
+
+  const group = new THREE.Group();
+
+  // Caixote militar
+  const crateMat = new THREE.MeshStandardMaterial({ color: 0x225588, metalness: 0.6, roughness: 0.3 });
+  const crate = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 1.2), crateMat);
+  crate.position.y = 0.6;
+  crate.castShadow = true;
+  group.add(crate);
+
+  // Paraquedas (Cone transparente)
+  const chuteMat = new THREE.MeshStandardMaterial({ color: 0x4fd8ff, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+  const chute = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.8, 12, 1, true), chuteMat);
+  chute.position.y = 3.5;
+  group.add(chute);
+
+  // Luz do flare
+  const flareLight = new THREE.PointLight(0x00f0ff, 2, 15);
+  flareLight.position.y = 1.4;
+  group.add(flareLight);
+
+  group.position.set(x, startY, z);
+  scene.add(group);
+
+  airDrops.push({
+    group,
+    chute,
+    targetY: getTerrainHeight(x, z),
+    landed: false,
+    x, z
+  });
+
+  playSound('airdrop');
+  showStatus('📦 AIR DROP TÁTICO ENVIADO — BUSQUE O CAIXOTE!', 3500);
+}
+
+function updateAirDrops(dt) {
+  for (let i = airDrops.length - 1; i >= 0; i--) {
+    const ad = airDrops[i];
+    if (ad.landed) continue;
+
+    // Queda suave com paraquedas
+    ad.group.position.y -= 7.5 * dt;
+
+    if (ad.group.position.y <= ad.targetY) {
+      ad.group.position.y = ad.targetY;
+      ad.landed = true;
+      ad.chute.visible = false; // Esconder paraquedas ao tocar o chão
+
+      // Transformar em baú saqueável no chão
+      addLootChest(ad.x, ad.z);
+      scene.remove(ad.group);
+      airDrops.splice(i, 1);
+      showStatus('📦 AIR DROP TOCOU O SOLO!', 2000);
+      playSound('jump');
+    }
   }
 }

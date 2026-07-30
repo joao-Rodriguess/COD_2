@@ -1,13 +1,18 @@
 // =====================================================================
-// BOTS.JS — IA dos Inimigos (MELHORADA)
-// =====================================================================
-// Estados: patrol, attack, cover, flank, retreat
+// BOTS.JS — IA de Inimigos Especializados + Slow-Motion Killcam + AirDrop Trigger
 // =====================================================================
 
-function createBotMesh(color, isBoss = false) {
+function createBotMesh(color, type = 'regular') {
   const g = new THREE.Group();
-  const scale = isBoss ? 1.4 : 1.0;
-  const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
+  const isBoss = (type === 'boss');
+  const isRusher = (type === 'rusher');
+  const isSniper = (type === 'sniper');
+  const scale = isBoss ? 1.4 : isRusher ? 0.9 : 1.0;
+
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: isSniper ? 0x223344 : isRusher ? 0x992222 : color,
+    roughness: 0.7
+  });
   const headMat = new THREE.MeshStandardMaterial({ color: 0xd9a172, roughness: 0.8 });
 
   const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * scale, 0.42 * scale, 1.1 * scale, 8), bodyMat);
@@ -22,7 +27,6 @@ function createBotMesh(color, isBoss = false) {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.28 * scale, 10, 10), headMat);
   head.position.y = 1.85 * scale; head.castShadow = true; g.add(head);
 
-  // Boss tem capacete
   if (isBoss) {
     const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.32 * scale, 10, 10), new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6, roughness: 0.4 }));
     helmet.position.y = 1.92 * scale; helmet.scale.y = 0.8; g.add(helmet);
@@ -31,16 +35,27 @@ function createBotMesh(color, isBoss = false) {
   const gunArm = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.55), new THREE.MeshStandardMaterial({ color: 0x1c1c1c }));
   gunArm.position.set(0.32 * scale, 1.25 * scale, -0.35 * scale); g.add(gunArm);
 
+  // Laser de visão para Sniper Inimigo
+  let laserLine = null;
+  if (isSniper) {
+    const laserMat = new THREE.LineBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.65 });
+    const laserGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -40)]);
+    laserLine = new THREE.Line(laserGeo, laserMat);
+    laserLine.position.set(0.32, 1.25, -0.5);
+    laserLine.visible = false;
+    g.add(laserLine);
+  }
+
   const barBg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x000000, transparent: true, opacity: 0.5, depthTest: false }));
   barBg.scale.set(1.1, 0.14, 1); barBg.position.y = 2.35 * scale; g.add(barBg);
 
-  const barFg = new THREE.Sprite(new THREE.SpriteMaterial({ color: isBoss ? 0xff8800 : 0xff3838, transparent: true, depthTest: false }));
+  const barFg = new THREE.Sprite(new THREE.SpriteMaterial({ color: isBoss ? 0xff8800 : isRusher ? 0xff3838 : isSniper ? 0x00f0ff : 0xffcc44, transparent: true, depthTest: false }));
   barFg.scale.set(1.05, 0.1, 1); barFg.position.y = 2.35 * scale; g.add(barFg);
 
-  return { group: g, torso, head, barFg };
+  return { group: g, torso, head, barFg, laserLine };
 }
 
-function spawnBot(isBoss = false) {
+function spawnBot(typeOverride = null) {
   if (bots.filter(b => b.alive).length >= BOT_MAX) return;
   let x, z, tries = 0;
   do {
@@ -49,17 +64,21 @@ function spawnBot(isBoss = false) {
     tries++;
   } while (Math.hypot(x - yawObject.position.x, z - yawObject.position.z) < 30 && tries < 30);
 
+  // Selecionar tipo aleatório de inimigo
+  const types = ['regular', 'rusher', 'sniper'];
+  const botType = typeOverride || (Math.random() < 0.25 ? 'rusher' : Math.random() < 0.2 ? 'sniper' : 'regular');
+
   const colors = [0xb03030, 0x306ab0, 0x8a6a30, 0x4f7a3a];
   const meshData = createBotMesh(
-    isBoss ? 0x880000 : colors[Math.floor(Math.random() * colors.length)],
-    isBoss
+    colors[Math.floor(Math.random() * colors.length)],
+    botType
   );
   meshData.group.position.set(x, 0, z);
   scene.add(meshData.group);
 
-  // Escalamento por onda
   const waveScale = 1 + (wave - 1) * 0.1;
-  const baseHp = isBoss ? 500 : 100;
+  const baseHp = (botType === 'boss') ? 500 : (botType === 'rusher') ? 70 : (botType === 'sniper') ? 80 : 100;
+  const baseSpeed = (botType === 'rusher') ? 3.8 : (botType === 'boss') ? 1.5 : (botType === 'sniper') ? 1.8 : (2.0 + Math.random() * 1.1);
 
   const bot = {
     id: botIdCounter++,
@@ -67,26 +86,24 @@ function spawnBot(isBoss = false) {
     hitMeshes: [meshData.torso, meshData.head],
     head: meshData.head,
     barFg: meshData.barFg,
+    laserLine: meshData.laserLine,
     health: baseHp * waveScale,
     maxHealth: baseHp * waveScale,
     alive: true,
-    isBoss: isBoss,
-    // IA melhorada
+    type: botType,
+    isBoss: botType === 'boss',
     state: 'patrol',
     patrolTarget: new THREE.Vector3(x + (Math.random() - 0.5) * 20, 0, z + (Math.random() - 0.5) * 20),
-    speed: (isBoss ? 1.5 : 2.0 + Math.random() * 1.1) * (1 + (wave - 1) * 0.08),
+    speed: baseSpeed * (1 + (wave - 1) * 0.08),
     lastShotTime: 0,
-    fireRateMs: isBoss ? 600 : (900 + Math.random() * 500) / (1 + (wave - 1) * 0.05),
-    accuracy: Math.min(0.7, (isBoss ? 0.5 : 0.35 + Math.random() * 0.25) + (wave - 1) * 0.03),
-    damage: isBoss ? 25 : 8 + Math.random() * 10,
-    lastSeenPlayer: false,
-    // Novos comportamentos
+    fireRateMs: (botType === 'sniper') ? 1800 : (botType === 'rusher') ? 600 : (900 + Math.random() * 500) / (1 + (wave - 1) * 0.05),
+    accuracy: Math.min(0.85, ((botType === 'sniper') ? 0.7 : (botType === 'boss') ? 0.5 : 0.35 + Math.random() * 0.25) + (wave - 1) * 0.03),
+    damage: (botType === 'sniper') ? 35 : (botType === 'boss') ? 25 : (botType === 'rusher') ? 12 : (8 + Math.random() * 10),
     dodgeTimer: 0,
     dodgeDir: new THREE.Vector3(),
     coverTarget: null,
     flankAngle: 0,
-    stateTimer: 0,
-    lastStateChange: 0
+    stateTimer: 0
   };
   bots.push(bot);
 }
@@ -98,77 +115,79 @@ function killBot(bot, isHeadshot = false) {
   player.totalKills++;
   waveEnemiesKilled++;
 
-  // Créditos (boss dá mais)
-  const baseCredits = bot.isBoss ? 500 : 100;
+  const baseCredits = bot.isBoss ? 500 : (bot.type === 'sniper') ? 150 : 100;
   credits += baseCredits;
 
-  // XP
   const xpGain = isHeadshot ? XP_PER_HEADSHOT : XP_PER_KILL;
   addXp(xpGain);
 
-  // Kill Streak
   player.killStreak++;
   if (player.killStreak > player.bestStreak) player.bestStreak = player.killStreak;
   checkStreak();
   updateStreakHud();
 
   document.getElementById('killCount').textContent = kills;
-  addKillFeed(bot.isBoss ? `BOSS ELIMINADO (+${baseCredits})` : `Você eliminou um inimigo (+${baseCredits})`);
+  addKillFeed(bot.isBoss ? `BOSS ELIMINADO (+${baseCredits})` : `Você eliminou um ${bot.type.toUpperCase()} (+${baseCredits})`);
 
-  // Atualizar wave HUD
   updateWaveHud();
+
+  // SLOW-MOTION KILLCAM NA ÚLTIMA ELIMINAÇÃO DA ONDA!
+  if (waveEnemiesKilled >= waveEnemiesTotal && bots.filter(b => b.alive).length === 0) {
+    timeScale = 0.25;
+    slowMoTimer = 1.5;
+    addScreenShake(0.06);
+    playSound('explosion');
+    showStatus('💥 ÚLTIMA ELIMINAÇÃO! ONDA LIMPA!', 2000);
+    startNextWave();
+  }
 
   setTimeout(() => {
     const idx = bots.indexOf(bot);
     if (idx >= 0) { scene.remove(bot.group); bots.splice(idx, 1); }
   }, 2500);
-
-  // Verificar fim da wave
-  if (waveEnemiesKilled >= waveEnemiesTotal && bots.filter(b => b.alive).length === 0) {
-    startNextWave();
-  }
 }
 
-// --- Sistema de Ondas Progressivo ---
+// --- Sistema de Ondas Progressivo & Air Drop ---
 function startNextWave() {
   wave++;
   document.getElementById('waveCount').textContent = wave;
 
-  // Bônus de onda
   const waveBonus = XP_PER_WAVE * wave;
   addXp(waveBonus);
   credits += 50 * wave;
   addKillFeed(`ONDA ${wave - 1} COMPLETA — +${waveBonus} XP, +${50 * wave} créditos`);
 
-  // Munição e suprimentos bônus
   ammoState.forEach((a, i) => a.reserve += Math.ceil(WEAPONS[i].magSize * 0.25));
   updateAmmoHud();
 
   saveProgress();
 
-  // Countdown antes da próxima onda
+  // Spawna Air Drop a cada 2 ondas
+  if (wave % 2 === 0) {
+    setTimeout(spawnAirDrop, 3000);
+  }
+
   const isBossWave = wave % 5 === 0;
   waveEnemiesTotal = Math.min(BOT_MAX, 3 + wave + (isBossWave ? 1 : 0));
   waveEnemiesKilled = 0;
   updateWaveHud();
 
   showWaveCountdown(5, () => {
-    // Spawn inimigos da nova onda
     const regularCount = isBossWave ? waveEnemiesTotal - 1 : waveEnemiesTotal;
     for (let i = 0; i < regularCount; i++) {
-      setTimeout(() => spawnBot(false), i * 400);
+      setTimeout(() => spawnBot(), i * 400);
     }
     if (isBossWave) {
       setTimeout(() => {
-        spawnBot(true);
-        showStatus('⚠ BOSS APARECEU — CUIDADO! ⚠', 3000);
-        addScreenShake(0.04);
+        spawnBot('boss');
+        showStatus('⚠ BOSS JUGGERNAUT APARECEU! ⚠', 3000);
+        addScreenShake(0.05);
       }, regularCount * 400 + 200);
     }
   });
 }
 
-// --- Kill Streak ---
+// --- Kill Streaks ---
 function checkStreak() {
   for (let i = 0; i < streakRewards.length; i++) {
     const sr = streakRewards[i];
@@ -186,21 +205,21 @@ function activateStreak(idx) {
   playSound('streak');
 
   switch (idx) {
-    case 0: // UAV
+    case 0:
       uavActive = true;
       uavEndTime = performance.now() + sr.duration;
       showStatus('UAV ATIVADO — Inimigos revelados por 15s', 2000);
       break;
-    case 1: // Ataque Aéreo
+    case 1:
       performAirstrike();
       break;
-    case 2: // Armor Drop
+    case 2:
       player.armor = Math.min(player.maxArmor, player.armor + 50);
       updateArmorHud();
       playSound('armor');
       showStatus('ARMADURA +50', 1500);
       break;
-    case 3: // Nuke
+    case 3:
       performNuke();
       break;
   }
@@ -246,7 +265,6 @@ function resetStreaks() {
   updateStreakHud();
 }
 
-// --- XP ---
 function addXp(amount) {
   player.xp += amount;
   showXpGain(amount);
@@ -262,7 +280,7 @@ function addXp(amount) {
 }
 
 // =====================================================================
-// IA DOS BOTS — ATUALIZAÇÃO PRINCIPAL
+// IA DOS BOTS — ATUALIZAÇÃO COM LASERS & COMPORTAMENTOS
 // =====================================================================
 
 function hasLineOfSight(fromPos, toPos) {
@@ -284,12 +302,10 @@ function findNearestCover(botPos, playerPos) {
     const distToBot = botPos.distanceTo(center);
     if (distToBot < 3 || distToBot > 30) continue;
 
-    // Preferir cobertura que esteja entre o bot e o jogador
     const dirToPlayer = new THREE.Vector3().subVectors(playerPos, center).normalize();
     const dirToBot = new THREE.Vector3().subVectors(botPos, center).normalize();
     const dotProduct = dirToPlayer.dot(dirToBot);
 
-    // Score: menor distância ao bot + preferência por cobertura entre bot e player
     const score = distToBot + (dotProduct > 0 ? 10 : -5);
     if (score < bestScore) {
       bestScore = score;
@@ -304,7 +320,6 @@ function updateBots(dt) {
   yawObject.getWorldPosition(playerPos);
   playerPos.y = 1.2;
 
-  // UAV timeout
   if (uavActive && performance.now() > uavEndTime) {
     uavActive = false;
     showStatus('UAV EXPIRADO', 1000);
@@ -316,31 +331,26 @@ function updateBots(dt) {
     botPos.y = 1.2;
     const distToPlayer = botPos.distanceTo(playerPos);
 
-    // Esquiva (quando atingido)
     if (bot.dodgeTimer > 0) {
       bot.dodgeTimer -= dt;
       moveBot(bot, bot.dodgeDir, bot.speed * 2.5 * dt);
     }
 
-    // Detecção
     let canSee = false;
-    if (distToPlayer < 55) {
+    if (distToPlayer < 65) {
       canSee = hasLineOfSight(botPos, playerPos);
     }
 
-    // Timer de estado
     bot.stateTimer += dt;
 
-    // Máquina de estados melhorada
     if (canSee && player.alive) {
-      // Transição de estado baseada na situação
       if (bot.health < bot.maxHealth * 0.3 && bot.state !== 'retreat') {
-        // HP baixo: recuar para cobertura
         bot.state = 'retreat';
         bot.coverTarget = findNearestCover(botPos, playerPos);
         bot.stateTimer = 0;
+      } else if (bot.type === 'rusher') {
+        bot.state = 'attack'; // Rusher sempre avança com tudo
       } else if (distToPlayer > 30 && bot.state !== 'flank' && Math.random() < 0.3 && bot.stateTimer > 3) {
-        // Longe: tentar flanquear
         bot.state = 'flank';
         bot.flankAngle = (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 3 + Math.random() * Math.PI / 4);
         bot.stateTimer = 0;
@@ -349,7 +359,6 @@ function updateBots(dt) {
         bot.stateTimer = 0;
       }
     } else if (bot.state === 'attack' || bot.state === 'flank' || bot.state === 'retreat') {
-      // Perdeu visão: voltar a patrulhar
       if (!canSee && bot.stateTimer > 2) {
         bot.state = 'patrol';
         bot.patrolTarget.set(
@@ -360,7 +369,11 @@ function updateBots(dt) {
       }
     }
 
-    // Executar comportamento do estado
+    // Laser da Sniper
+    if (bot.laserLine) {
+      bot.laserLine.visible = (canSee && bot.state === 'attack');
+    }
+
     switch (bot.state) {
       case 'attack':
         executeAttack(bot, botPos, playerPos, distToPlayer, dt);
@@ -376,11 +389,9 @@ function updateBots(dt) {
         break;
     }
 
-    // Limites do mapa
     bot.group.position.x = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, bot.group.position.x));
     bot.group.position.z = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, bot.group.position.z));
 
-    // Barra de vida
     bot.barFg.scale.x = 1.05 * Math.max(bot.health, 0) / bot.maxHealth;
     bot.barFg.position.x = -1.05 * (1 - Math.max(bot.health, 0) / bot.maxHealth) / 2;
   });
@@ -391,16 +402,17 @@ function executeAttack(bot, botPos, playerPos, dist, dt) {
   const angle = Math.atan2(lookDir.x, lookDir.z);
   bot.group.rotation.y = angle;
 
-  // Movimento: aproximar ou recuar baseado na distância ideal
-  if (dist > 22) {
+  // Rusher avança rápido, Sniper mantém distância
+  const idealMinDist = (bot.type === 'rusher') ? 2 : (bot.type === 'sniper') ? 25 : 10;
+
+  if (dist > idealMinDist + 5) {
     const move = new THREE.Vector3().subVectors(playerPos, bot.group.position).normalize();
     moveBot(bot, move, bot.speed * dt);
-  } else if (dist < 10) {
+  } else if (dist < idealMinDist - 2) {
     const move = new THREE.Vector3().subVectors(bot.group.position, playerPos).normalize();
     moveBot(bot, move, bot.speed * dt * 0.7);
   }
 
-  // Atirar
   const now = performance.now();
   if (now - bot.lastShotTime > bot.fireRateMs) {
     bot.lastShotTime = now;
@@ -409,24 +421,19 @@ function executeAttack(bot, botPos, playerPos, dist, dt) {
 }
 
 function executeFlank(bot, botPos, playerPos, dist, dt) {
-  // Mover lateralmente em relação ao jogador
   const toPlayer = new THREE.Vector3().subVectors(playerPos, bot.group.position).normalize();
   const flankDir = toPlayer.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), bot.flankAngle);
-
-  // Olhar para o jogador enquanto se move
   const angle = Math.atan2(toPlayer.x, toPlayer.z);
   bot.group.rotation.y = angle;
 
   moveBot(bot, flankDir, bot.speed * 1.2 * dt);
 
-  // Atirar enquanto flanqueia (com menos precisão)
   const now = performance.now();
   if (now - bot.lastShotTime > bot.fireRateMs * 1.3) {
     bot.lastShotTime = now;
     botShoot(bot, botPos, playerPos, dist);
   }
 
-  // Depois de flanquear um tempo, atacar normalmente
   if (bot.stateTimer > 4) {
     bot.state = 'attack';
     bot.stateTimer = 0;
@@ -438,7 +445,6 @@ function executeRetreat(bot, botPos, playerPos, dist, dt) {
     const toCover = new THREE.Vector3().subVectors(bot.coverTarget, bot.group.position);
     toCover.y = 0;
     if (toCover.length() < 2) {
-      // Chegou na cobertura: atirar agachado
       const lookDir = new THREE.Vector3().subVectors(playerPos, bot.group.position);
       bot.group.rotation.y = Math.atan2(lookDir.x, lookDir.z);
       const now = performance.now();
@@ -446,7 +452,6 @@ function executeRetreat(bot, botPos, playerPos, dist, dt) {
         bot.lastShotTime = now;
         botShoot(bot, botPos, playerPos, dist);
       }
-      // Se regenerou um pouco, voltar a atacar
       if (bot.stateTimer > 6) {
         bot.state = 'attack';
         bot.stateTimer = 0;
@@ -457,7 +462,6 @@ function executeRetreat(bot, botPos, playerPos, dist, dt) {
       bot.group.rotation.y = Math.atan2(toCover.x, toCover.z);
     }
   } else {
-    // Sem cobertura: fugir do jogador
     const away = new THREE.Vector3().subVectors(bot.group.position, playerPos).normalize();
     moveBot(bot, away, bot.speed * 1.2 * dt);
     bot.group.rotation.y = Math.atan2(away.x, away.z);

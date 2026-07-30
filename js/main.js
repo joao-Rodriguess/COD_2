@@ -1,17 +1,26 @@
 // =====================================================================
-// MAIN.JS — Game Loop + Câmera 3D de Menu + Inicialização
+// MAIN.JS — Loop Principal + Performance Throttling + Portais + AirDrops
 // =====================================================================
 
 function animate() {
   requestAnimationFrame(animate);
   const now = performance.now();
-  let dt = (now - lastTime) / 1000;
-  dt = Math.min(dt, 0.05);
+  let rawDt = (now - lastTime) / 1000;
+  rawDt = Math.min(rawDt, 0.05);
   lastTime = now;
+
+  // Slow-Motion Update
+  if (slowMoTimer > 0) {
+    slowMoTimer -= rawDt;
+    if (slowMoTimer <= 0) timeScale = 1.0;
+  }
+  const dt = rawDt * timeScale;
+
+  frameCount++;
 
   // --- MODO MENU PRINCIPAL (Câmera 3D em Órbita Cinemática) ---
   if (!gameRunning) {
-    menuCameraAngle += dt * 0.15;
+    menuCameraAngle += rawDt * 0.15;
     const radius = 90;
     const height = 45;
     yawObject.position.set(
@@ -20,11 +29,14 @@ function animate() {
       Math.sin(menuCameraAngle) * radius
     );
     yawObject.rotation.y = -menuCameraAngle - Math.PI / 2;
-    pitchObject.rotation.x = -0.35; // Olhando suavemente para baixo
+    pitchObject.rotation.x = -0.35;
 
-    cubeCamera.position.copy(yawObject.position);
-    cubeCamera.update(renderer, scene);
-    reflectiveMaterials.forEach(m => m.needsUpdate = true);
+    if (frameCount % 4 === 0) {
+      cubeCamera.position.copy(yawObject.position);
+      cubeCamera.update(renderer, scene);
+      reflectiveMaterials.forEach(m => m.needsUpdate = true);
+    }
+    updateAmbientParticles(rawDt);
     renderer.render(scene, camera);
     return;
   }
@@ -41,7 +53,6 @@ function animate() {
     if (w.auto) doShoot();
   }
 
-  // Recarga
   if (reloading && now >= reloadEndTime) finishReload();
 
   // Updates de gameplay
@@ -50,6 +61,9 @@ function animate() {
   updateDrop(dt);
   updateBots(dt);
   updateGrenades(dt);
+  updateAirDrops(dt);
+  updatePortals(dt); // Atualização de portais quânticos de teletransporte
+  updateAmbientParticles(dt);
   updateInteractionHint();
   updateDamageIndicators(dt);
   updateScreenShake();
@@ -98,10 +112,13 @@ function animate() {
     }
   }
 
-  // Render em jogo
-  cubeCamera.position.copy(yawObject.position);
-  cubeCamera.update(renderer, scene);
-  reflectiveMaterials.forEach(m => m.needsUpdate = true);
+  // Otimização: reflexões a cada 4 frames
+  if (frameCount % 4 === 0) {
+    cubeCamera.position.copy(yawObject.position);
+    cubeCamera.update(renderer, scene);
+    reflectiveMaterials.forEach(m => m.needsUpdate = true);
+  }
+
   drawMinimap();
   renderer.render(scene, camera);
 }
@@ -118,7 +135,6 @@ updateInventory();
 updateXpHud();
 updateStreakHud();
 updateWaveHud();
-createTacticalSites();
 applyMapTheme();
 showMainMenu();
 animate();

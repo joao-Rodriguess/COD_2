@@ -1,9 +1,8 @@
 "use strict";
 // =====================================================================
-// GLOBALS.JS — Three.js Setup + Estado Compartilhado
+// GLOBALS.JS — Three.js Setup + Estado Compartilhado + Key Helper
 // =====================================================================
 
-// --- Settings do Usuário ---
 const settings = {
   sensitivity: 0.0022,
   fov: 75,
@@ -31,8 +30,8 @@ loadSettings();
 
 // --- Renderer ---
 const canvas = document.getElementById('gameCanvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -42,8 +41,8 @@ renderer.toneMappingExposure = 1.1;
 
 // --- Scene ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x8fc7ff);
-scene.fog = new THREE.Fog(0x8fc7ff, 60, 260);
+scene.background = new THREE.Color(0x050914);
+scene.fog = new THREE.Fog(0x0c142b, 60, 260);
 
 // --- Camera Rig ---
 const camera = new THREE.PerspectiveCamera(settings.fov, window.innerWidth / window.innerHeight, 0.1, 500);
@@ -80,14 +79,14 @@ sun.shadow.camera.right = 160;
 sun.shadow.camera.top = 160;
 sun.shadow.camera.bottom = -160;
 sun.shadow.camera.far = 400;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(1024, 1024);
 scene.add(sun);
 const fill = new THREE.DirectionalLight(0xadc7ff, 0.42);
 fill.position.set(-72, 110, -46);
 scene.add(fill);
 
 // --- Environment Map ---
-const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256, {
+const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(128, {
   format: THREE.RGBAFormat,
   generateMipmaps: true,
   minFilter: THREE.LinearMipmapLinearFilter,
@@ -98,9 +97,9 @@ scene.add(cubeCamera);
 scene.environment = cubeRenderTarget.texture;
 const reflectiveMaterials = [];
 
-// =====================================================================
-// CONSTANTES
-// =====================================================================
+let frameCount = 0;
+
+// CONSTANTES & TIME SCALE
 const WORLD_SIZE = 320;
 const MAP_LIMIT = WORLD_SIZE - 4;
 const GRAVITY = -20;
@@ -108,9 +107,27 @@ const JUMP_SPEED = 7.2;
 const TERRAIN_SEGMENTS = 140;
 const BOT_MAX = 7;
 
-// =====================================================================
+let timeScale = 1.0;
+let slowMoTimer = 0;
+
+// CONTROLES TÁTICOS GLOBAIS
+let isLeaningLeft = false;
+let isLeaningRight = false;
+let leanAngle = 0;
+let isSilenced = false;
+let isNvgActive = false;
+
+// TECLAS UNIFICADAS
+const keys = {};
+
+function isKeyPressed(code, letter, altKey) {
+  if (keys[code]) return true;
+  if (letter && (keys[letter] || keys[letter.toLowerCase()] || keys[letter.toUpperCase()])) return true;
+  if (altKey && keys[altKey]) return true;
+  return false;
+}
+
 // ARRAYS COMPARTILHADOS
-// =====================================================================
 const collidables = [];
 const houseEntries = [];
 const lootChests = [];
@@ -124,10 +141,23 @@ const hitEffects = [];
 const buildingSpots = [];
 const centerPositions = [];
 const roadSegments = [];
+const airDrops = [];
+const ambientParticles = [];
 
-// =====================================================================
+// SKINS DAS ARMAS
+const SKINS = {
+  default: { name: 'Militar Padrão', color: 0x232323, metalness: 0.6, roughness: 0.35, price: 0 },
+  camo:    { name: 'Digital Camo', color: 0x3d4f36, metalness: 0.4, roughness: 0.6, price: 500 },
+  gold:    { name: 'Ouro Puro', color: 0xffd700, metalness: 0.95, roughness: 0.15, price: 1200 },
+  cyber:   { name: 'Cyber Neon', color: 0x0f1923, emissive: 0x00f0ff, metalness: 0.8, roughness: 0.2, price: 1800 },
+  plasma:  { name: 'Plasma Carmesim', color: 0x2a0808, emissive: 0xff2200, metalness: 0.7, roughness: 0.3, price: 2500 },
+  void:    { name: 'Void Purple', color: 0x14052b, emissive: 0x9d00ff, metalness: 0.9, roughness: 0.1, price: 3500 }
+};
+
+const equippedSkins = { rifle: 'default', pistol: 'default', smg: 'default', shotgun: 'default', sniper: 'default' };
+const unlockedSkins = new Set(['rifle_default', 'pistol_default', 'smg_default', 'shotgun_default', 'sniper_default']);
+
 // ESTADO MUTÁVEL
-// =====================================================================
 let botIdCounter = 0;
 let kills = 0, deaths = 0, wave = 1;
 let lastShotTime = 0;
@@ -149,12 +179,11 @@ let yaw = 0, pitch = 0;
 let pointerLocked = false;
 let recoilOffset = 0;
 let hitmarkerTimeout = null;
-let selectedMap = 'verdant';
+let selectedMap = 'neon_rust';
 
-// Câmera de menu 3D
 let menuCameraAngle = 0;
 
-// Avião
+// AVIÃO DE CARGA
 let dropActive = false;
 let inPlane = false;
 let planeJumpReady = false;
@@ -164,57 +193,35 @@ const planeFlightRadius = WORLD_SIZE * 0.7;
 const planePathHeight = 92;
 const planeSpeed = 0.65;
 const planePosition = new THREE.Vector3();
-const planeLocalPosition = new THREE.Vector3(0, 1.0, 2.1);
+const planeLocalPosition = new THREE.Vector3(0, 1.2, 3.5);
 let planeCorridorOffset = new THREE.Vector3(0, 0, 0);
 
-// Controles
-const keys = {};
-
-// Raycaster
+// RAYCASTER
 const raycaster = new THREE.Raycaster();
 
-// =====================================================================
-// INVENTÁRIO & DESBLOQUEIOS
-// =====================================================================
+// INVENTÁRIO
 const inventory = { medkits: 1, barricades: 2, supplies: 0, grenades: 3 };
 const unlockedWeapons = new Set(['rifle', 'pistol']);
 
-// =====================================================================
 // JOGADOR
-// =====================================================================
 const player = {
-  health: 100,
-  maxHealth: 100,
-  armor: 0,
-  maxArmor: 100,
+  health: 100, maxHealth: 100,
+  armor: 0, maxArmor: 100,
   velocity: new THREE.Vector3(),
   onGround: true,
-  speed: 6.2,
-  sprintMult: 1.6,
-  radius: 0.5,
-  height: 2,
+  speed: 6.2, sprintMult: 1.6,
+  radius: 0.5, height: 2,
   alive: true,
-  // Stamina
-  stamina: 100,
-  maxStamina: 100,
+  stamina: 100, maxStamina: 100,
   staminaExhausted: false,
-  // Agachamento
-  crouching: false,
-  crouchLerp: 0,
-  // Kill Streak
-  killStreak: 0,
-  bestStreak: 0,
-  // XP & Progresso
-  xp: 0,
-  level: 1,
-  totalKills: 0,
-  headshots: 0,
+  crouching: false, crouchLerp: 0,
+  isSliding: false, slideTimer: 0, slideDir: new THREE.Vector3(),
+  killStreak: 0, bestStreak: 0,
+  xp: 0, level: 1, totalKills: 0, headshots: 0,
   accuracy: { shots: 0, hits: 0 }
 };
 
-// =====================================================================
 // KILL STREAKS
-// =====================================================================
 const streakRewards = [
   { kills: 3, name: 'UAV', desc: 'Inimigos revelados no mapa', active: false, timer: 0, duration: 15000 },
   { kills: 5, name: 'ATAQUE AÉREO', desc: 'Dano em área nos inimigos', active: false },
@@ -225,9 +232,6 @@ let nextStreakIdx = 0;
 let uavActive = false;
 let uavEndTime = 0;
 
-// =====================================================================
-// SISTEMA DE ONDAS
-// =====================================================================
 let waveEnemiesTotal = 5;
 let waveEnemiesKilled = 0;
 let waveCountdown = 0;
@@ -235,9 +239,6 @@ let waveTransition = false;
 let waveBonusGiven = false;
 let waveCountdownInterval = null;
 
-// =====================================================================
-// GRANADAS & DASH & OUTROS
-// =====================================================================
 let lastGrenadeTime = 0;
 const grenadeObjects = [];
 const GRENADE_COOLDOWN = 2000;
@@ -263,9 +264,6 @@ const XP_PER_HEADSHOT = 100;
 const XP_PER_WAVE = 150;
 const XP_PER_LEVEL = 500;
 
-// =====================================================================
-// PERSISTÊNCIA
-// =====================================================================
 function loadProgress() {
   try {
     const data = JSON.parse(localStorage.getItem('warzone_progress'));
@@ -277,6 +275,8 @@ function loadProgress() {
       player.headshots = data.headshots ?? 0;
       player.bestStreak = data.bestStreak ?? 0;
       if (data.weapons) data.weapons.forEach(w => unlockedWeapons.add(w));
+      if (data.equippedSkins) Object.assign(equippedSkins, data.equippedSkins);
+      if (data.unlockedSkins) data.unlockedSkins.forEach(s => unlockedSkins.add(s));
     }
   } catch (_) {}
 }
@@ -290,7 +290,9 @@ function saveProgress() {
       totalKills: player.totalKills,
       headshots: player.headshots,
       bestStreak: player.bestStreak,
-      weapons: [...unlockedWeapons]
+      weapons: [...unlockedWeapons],
+      equippedSkins,
+      unlockedSkins: [...unlockedSkins]
     }));
   } catch (_) {}
 }

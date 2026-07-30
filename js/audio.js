@@ -1,5 +1,5 @@
 // =====================================================================
-// AUDIO.JS — Sistema de Som Procedural + Master Volume
+// AUDIO.JS — Sistema de Som Procedural + Master Volume + SlowMo
 // =====================================================================
 
 let audioContext = null;
@@ -33,18 +33,24 @@ function playSound(kind) {
     const ctx = audioCtx();
     if (ctx.state === 'suspended') ctx.resume().catch(() => {});
     const now = ctx.currentTime;
+
+    // Pitch ajustado por timeScale se estiver em slow motion
+    const pitchScale = (timeScale < 1.0) ? 0.6 : 1.0;
+
     const cfg = {
-      rifle:    [95, .085, 'sawtooth'],
-      pistol:   [145, .07, 'square'],
-      smg:      [120, .045, 'square'],
-      shotgun:  [62, .16, 'sawtooth'],
+      rifle:    [95 * pitchScale, .085, 'sawtooth'],
+      pistol:   [145 * pitchScale, .07, 'square'],
+      smg:      [120 * pitchScale, .045, 'square'],
+      shotgun:  [62 * pitchScale, .16, 'sawtooth'],
       reload:   [360, .055, 'triangle'],
       hit:      [720, .04, 'sine'],
       jump:     [180, .07, 'triangle'],
       step:     [95, .025, 'triangle'],
-      enemy:    [105, .06, 'square'],
-      explosion:[42, .35, 'sawtooth'],
+      enemy:    [105 * pitchScale, .06, 'square'],
+      explosion:[42 * pitchScale, .35, 'sawtooth'],
       dash:     [280, .04, 'triangle'],
+      slide:    [220, .08, 'sawtooth'],
+      airdrop:  [320, .25, 'triangle'],
       streak:   [440, .12, 'sine'],
       armor:    [520, .06, 'triangle'],
       levelup:  [660, .18, 'sine'],
@@ -76,8 +82,8 @@ function playSound(kind) {
       const osc2 = ctx.createOscillator();
       const gain2 = ctx.createGain();
       osc2.type = 'sawtooth';
-      osc2.frequency.setValueAtTime(28, now);
-      osc2.frequency.exponentialRampToValueAtTime(18, now + 0.4);
+      osc2.frequency.setValueAtTime(28 * pitchScale, now);
+      osc2.frequency.exponentialRampToValueAtTime(18 * pitchScale, now + 0.4);
       gain2.gain.setValueAtTime(0.15, now);
       gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
       osc2.connect(gain2).connect(masterGain || ctx.destination);
@@ -85,7 +91,7 @@ function playSound(kind) {
       osc2.stop(now + 0.4);
     }
 
-    // Level up: acorde ascendente
+    // Level up
     if (kind === 'levelup') {
       [880, 1100].forEach((freq, i) => {
         const o = ctx.createOscillator();
@@ -99,7 +105,7 @@ function playSound(kind) {
         o.stop(now + 0.08 * (i + 1) + 0.15);
       });
     }
-  } catch (_) { /* navegadores podem bloquear áudio até a primeira interação */ }
+  } catch (_) { /* áudio pode ser bloqueado */ }
 }
 
 function setWind(active) {

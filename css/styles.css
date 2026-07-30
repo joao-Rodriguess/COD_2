@@ -263,7 +263,6 @@ html, body {
   opacity:0 !important; visibility:hidden !important; pointer-events:none !important; display:none !important;
 }
 
-/* Header bar do menu principal estilo COD Warzone */
 .menuHeader {
   width:100%; padding:20px 40px; display:flex; justify-content:space-between; align-items:center;
   background:linear-gradient(180deg, rgba(4,10,24,0.95) 0%, rgba(4,10,24,0) 100%);
@@ -276,7 +275,6 @@ html, body {
 }
 .menuBrand .sub { font-size:12px; font-weight:700; color:#9fb3d9; letter-spacing:2px; text-transform:uppercase; }
 
-/* Navegação por Abas */
 .menuTabs { display:flex; gap:10px; }
 .tabBtn {
   font-family:'Orbitron', sans-serif; font-size:13px; font-weight:800; letter-spacing:2px;
@@ -286,13 +284,12 @@ html, body {
 .tabBtn:hover { background:rgba(79,216,255,0.15); color:#ffffff; border-color:rgba(79,216,255,0.4); transform:translateY(-1px); }
 .tabBtn.active { background:linear-gradient(135deg, rgba(79,216,255,0.25), rgba(42,107,255,0.35)); color:#4fd8ff; border-color:#4fd8ff; box-shadow:0 0 16px rgba(79,216,255,0.3); }
 
-/* Conteúdo principal do menu */
 .menuMainContent {
   flex:1; display:flex; justify-content:center; align-items:center; padding:30px;
 }
 
 .menuPanelAAA {
-  width:min(940px,94vw); padding:36px; border:1px solid rgba(79,216,255,0.35); border-radius:16px;
+  width:min(960px,94vw); padding:36px; border:1px solid rgba(79,216,255,0.35); border-radius:16px;
   background:linear-gradient(135deg, rgba(8,18,36,0.92), rgba(3,6,16,0.95));
   box-shadow:0 32px 90px rgba(0,0,0,0.85), inset 0 0 40px rgba(79,216,255,0.05);
   backdrop-filter:blur(16px); animation: panelFade 0.3s ease-out;
@@ -306,26 +303,25 @@ html, body {
 
 .menuPanelAAA p.desc { font-size:15px; font-weight:600; color:#b9d9e8; line-height:1.6; margin-bottom:24px; }
 
-/* Grid de Operações / Mapas */
 .menuGridAAA { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:20px 0; }
 
-.mapCardAAA, .storeCardAAA {
-  padding:22px; border:1px solid rgba(255,255,255,0.12); border-radius:12px;
+.mapCardAAA, .storeCardAAA, .skinCardAAA {
+  padding:20px; border:1px solid rgba(255,255,255,0.12); border-radius:12px;
   text-align:left; background:rgba(255,255,255,0.03); cursor:pointer;
   transition:all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); position:relative; overflow:hidden;
 }
-.mapCardAAA::before, .storeCardAAA::before {
+.mapCardAAA::before, .storeCardAAA::before, .skinCardAAA::before {
   content:''; position:absolute; top:0; left:0; width:4px; height:100%; background:transparent; transition:background 0.2s;
 }
-.mapCardAAA:hover, .storeCardAAA:hover {
+.mapCardAAA:hover, .storeCardAAA:hover, .skinCardAAA:hover {
   transform:translateY(-4px); border-color:rgba(79,216,255,0.5); background:rgba(79,216,255,0.06);
   box-shadow:0 12px 30px rgba(0,0,0,0.5);
 }
-.mapCardAAA.selected { border-color:#4fd8ff; background:rgba(79,216,255,0.12); box-shadow:0 0 24px rgba(79,216,255,0.25); }
-.mapCardAAA.selected::before, .storeCardAAA.owned::before { background:#4fd8ff; }
+.mapCardAAA.selected, .skinCardAAA.equipped { border-color:#4fd8ff; background:rgba(79,216,255,0.12); box-shadow:0 0 24px rgba(79,216,255,0.25); }
+.mapCardAAA.selected::before, .storeCardAAA.owned::before, .skinCardAAA.equipped::before { background:#4fd8ff; }
 
-.mapCardAAA b, .storeCardAAA b { display:block; font-family:'Orbitron', sans-serif; font-size:15px; color:#eaf2ff; margin-bottom:8px; }
-.mapCardAAA small, .storeCardAAA small { font-size:13px; font-weight:600; color:#9fb3d9; line-height:1.4; }
+.mapCardAAA b, .storeCardAAA b, .skinCardAAA b { display:block; font-family:'Orbitron', sans-serif; font-size:14px; color:#eaf2ff; margin-bottom:6px; }
+.mapCardAAA small, .storeCardAAA small, .skinCardAAA small { font-size:12px; font-weight:600; color:#9fb3d9; line-height:1.4; }
 
 .btnAAA {
   font-family:'Orbitron', sans-serif; font-size:14px; font-weight:900; letter-spacing:2px;
@@ -343,7 +339,6 @@ html, body {
 }
 .btnAAA.danger:hover { filter:brightness(1.15); box-shadow:0 0 28px rgba(255,56,56,0.8); }
 
-/* Configurações Controls */
 .settingsGroup { display:flex; flex-direction:column; gap:16px; max-width:580px; margin:0 auto; }
 .settingRow { display:flex; justify-content:space-between; align-items:center; padding:12px 18px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; }
 .settingRow label { font-family:'Orbitron', sans-serif; font-size:12px; font-weight:700; color:#eaf2ff; }
@@ -354,7 +349,7 @@ html, body {
 .settingControl .valLabel { font-family:'Orbitron', sans-serif; font-size:13px; font-weight:800; color:#4fd8ff; min-width:44px; text-align:right; }
 
 /* =====================================================================
-   MENU DE PAUSA IN-GAME (EXCLUSIVO DE PARTIDA)
+   MENU DE PAUSA IN-GAME
    ===================================================================== */
 #pauseMenu {
   position:fixed; inset:0; display:flex; justify-content:center; align-items:center;

@@ -1,18 +1,223 @@
 // =====================================================================
-// MENUS.JS — Telas de Menu, Loja, Briefing, Game Over
+// MENUS.JS — Sistema de Menus Profissional AAA + Pause In-Game Distinto
 // =====================================================================
 
-const overlay = document.getElementById('overlay');
-const startBtn = document.getElementById('startBtn');
-if (startBtn) startBtn.addEventListener('click', e => {
-  e.preventDefault();
+let activeTab = 'operation';
+
+function attachUiSoundEvents() {
+  document.querySelectorAll('.tabBtn, .mapCardAAA, .storeCardAAA, .btnAAA, button').forEach(el => {
+    if (el.dataset.soundBound) return;
+    el.dataset.soundBound = 'true';
+    el.addEventListener('mouseenter', () => playSound('ui_hover'));
+    el.addEventListener('click', () => playSound('ui_click'));
+  });
+}
+
+function renderMenuLayout() {
+  const overlay = document.getElementById('overlay');
+  if (!overlay) return;
+
+  const map = MAPS[selectedMap];
+  const accuracy = player.accuracy.shots > 0 ? Math.round(player.accuracy.hits / player.accuracy.shots * 100) : 0;
+
+  overlay.style.display = 'flex';
   overlay.classList.remove('hidden');
-  showBriefing();
-});
+
+  overlay.innerHTML = `
+    <div class="menuHeader">
+      <div class="menuBrand">
+        <h1>WARZONE</h1>
+        <div class="sub">Operação Queda Fantasma</div>
+      </div>
+      <div class="menuTabs">
+        <button class="tabBtn ${activeTab === 'operation' ? 'active' : ''}" onclick="switchTab('operation')">OPERAÇÃO</button>
+        <button class="tabBtn ${activeTab === 'arsenal' ? 'active' : ''}" onclick="switchTab('arsenal')">ARSENAL</button>
+        <button class="tabBtn ${activeTab === 'stats' ? 'active' : ''}" onclick="switchTab('stats')">OPERADOR</button>
+        <button class="tabBtn ${activeTab === 'settings' ? 'active' : ''}" onclick="switchTab('settings')">CONFIGURAÇÕES</button>
+      </div>
+    </div>
+    <div class="menuMainContent">
+      <div id="tabContent" class="menuPanelAAA"></div>
+    </div>
+  `;
+
+  renderTabContent();
+  attachUiSoundEvents();
+}
+
+function switchTab(tabName) {
+  activeTab = tabName;
+  renderMenuLayout();
+}
+
+function renderTabContent() {
+  const container = document.getElementById('tabContent');
+  if (!container) return;
+
+  if (activeTab === 'operation') {
+    const maps = Object.entries(MAPS).map(([key, m]) => `
+      <div class="mapCardAAA ${key === selectedMap ? 'selected' : ''}" onclick="selectMap('${key}')">
+        <b>${m.name}</b>
+        <small>${m.subtitle}</small>
+      </div>
+    `).join('');
+
+    container.innerHTML = `
+      <h2>TEATRO DE OPERAÇÕES</h2>
+      <p class="desc">Escolha a zona de inserção, prepare o salto de alta altitude e elimine as forças hostis.</p>
+      <div class="menuGridAAA">${maps}</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:24px;">
+        <span class="credits" style="font-family:'Orbitron',sans-serif; font-size:14px;">CRÉDITOS: <strong style="color:#ffcc44;">${credits}</strong></span>
+        <div style="display:flex; gap:12px;">
+          <button class="btnAAA secondary" onclick="showExitModal()">SAIR DO JOGO</button>
+          <button class="btnAAA" onclick="beginGame()">INICIAR SALTO DE COMBATE</button>
+        </div>
+      </div>
+    `;
+  } else if (activeTab === 'arsenal') {
+    const storeCards = WEAPONS.map((w, i) => `
+      <div class="storeCardAAA ${unlockedWeapons.has(w.key) ? 'owned' : ''}">
+        <b>${w.name}</b>
+        <small>${w.damage} Dano · ${w.magSize} Projéteis${w.pellets ? ' · ' + w.pellets + ' Pellets' : ''}<br>
+        ${unlockedWeapons.has(w.key) ? '<span style="color:#4fd8ff;">ADQUIRIDA</span>' : w.price + ' Créditos'}</small><br>
+        <button class="btnAAA secondary" style="margin-top:12px; font-size:12px; padding:8px 16px;" data-buy="${i}" ${unlockedWeapons.has(w.key) ? 'disabled' : ''}>
+          ${unlockedWeapons.has(w.key) ? 'DESBLOQUEADA' : 'COMPRAR'}
+        </button>
+      </div>
+    `).join('');
+
+    container.innerHTML = `
+      <h2>ARSENAL TÁTICO</h2>
+      <p class="desc">Adquira e desbloqueie armamento militar com seus créditos de combate.</p>
+      <div class="menuGridAAA">${storeCards}</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+        <span class="credits" style="font-family:'Orbitron',sans-serif; font-size:14px;">CRÉDITOS DISPONÍVEIS: <strong style="color:#ffcc44;">${credits}</strong></span>
+        <button class="btnAAA secondary" onclick="switchTab('operation')">VOLTAR</button>
+      </div>
+    `;
+
+    container.querySelectorAll('[data-buy]').forEach(btn => {
+      btn.onclick = () => {
+        const w = WEAPONS[+btn.dataset.buy];
+        if (credits < w.price) { showStatus('CRÉDITOS INSUFICIENTES'); return; }
+        credits -= w.price;
+        unlockedWeapons.add(w.key);
+        switchWeapon(+btn.dataset.buy);
+        saveProgress();
+        renderTabContent();
+      };
+    });
+  } else if (activeTab === 'stats') {
+    const accuracy = player.accuracy.shots > 0 ? Math.round(player.accuracy.hits / player.accuracy.shots * 100) : 0;
+    container.innerHTML = `
+      <h2>ESTATÍSTICAS DO OPERADOR</h2>
+      <p class="desc">Seu histórico militar acumulado e progresso registrado.</p>
+      <div class="statsGrid" style="max-width:540px; margin:20px auto; gap:12px 32px; font-size:15px;">
+        <span class="stat-label">Nível de Operador</span><span class="stat-value">NV ${player.level}</span>
+        <span class="stat-label">XP Total</span><span class="stat-value">${player.xp} XP</span>
+        <span class="stat-label">Inimigos Eliminados</span><span class="stat-value">${player.totalKills}</span>
+        <span class="stat-label">Acertos na Cabeça</span><span class="stat-value">${player.headshots}</span>
+        <span class="stat-label">Melhor Kill Streak</span><span class="stat-value">${player.bestStreak}</span>
+        <span class="stat-label">Precisão Global</span><span class="stat-value">${accuracy}%</span>
+      </div>
+    `;
+  } else if (activeTab === 'settings') {
+    container.innerHTML = `
+      <h2>CONFIGURAÇÕES DE JOGO</h2>
+      <p class="desc">Ajuste os controles, câmera e áudio do seu combate.</p>
+      <div class="settingsGroup">
+        <div class="settingRow">
+          <label>SENSIBILIDADE DO MOUSE</label>
+          <div class="settingControl">
+            <input type="range" id="sensSlider" min="0.0005" max="0.0050" step="0.0001" value="${settings.sensitivity}">
+            <span class="valLabel" id="sensVal">${Math.round(settings.sensitivity * 20000)}</span>
+          </div>
+        </div>
+        <div class="settingRow">
+          <label>CAMPO DE VISÃO (FOV)</label>
+          <div class="settingControl">
+            <input type="range" id="fovSlider" min="60" max="110" step="1" value="${settings.fov}">
+            <span class="valLabel" id="fovVal">${settings.fov}°</span>
+          </div>
+        </div>
+        <div class="settingRow">
+          <label>VOLUME GERAL</label>
+          <div class="settingControl">
+            <input type="range" id="volSlider" min="0" max="1" step="0.05" value="${settings.volume}">
+            <span class="valLabel" id="volVal">${Math.round(settings.volume * 100)}%</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    bindSettingsEvents();
+  }
+
+  attachUiSoundEvents();
+}
+
+function bindSettingsEvents() {
+  const sensSlider = document.getElementById('sensSlider');
+  const fovSlider = document.getElementById('fovSlider');
+  const volSlider = document.getElementById('volSlider');
+
+  if (sensSlider) sensSlider.oninput = (e) => {
+    settings.sensitivity = parseFloat(e.target.value);
+    const sensVal = document.getElementById('sensVal');
+    if (sensVal) sensVal.textContent = Math.round(settings.sensitivity * 20000);
+    saveSettings();
+  };
+
+  if (fovSlider) fovSlider.oninput = (e) => {
+    const val = parseInt(e.target.value);
+    applyFov(val);
+    const fovVal = document.getElementById('fovVal');
+    if (fovVal) fovVal.textContent = val + '°';
+  };
+
+  if (volSlider) volSlider.oninput = (e) => {
+    settings.volume = parseFloat(e.target.value);
+    updateMasterVolume();
+    const volVal = document.getElementById('volVal');
+    if (volVal) volVal.textContent = Math.round(settings.volume * 100) + '%';
+    saveSettings();
+  };
+}
+
+function selectMap(key) {
+  selectedMap = key;
+  applyMapTheme();
+  renderTabContent();
+}
+
+function showMainMenu() {
+  gameRunning = false;
+  isPaused = false;
+  dropActive = false;
+  inPlane = false;
+  transportPlane.visible = false;
+  setWind(false);
+
+  const pauseMenu = document.getElementById('pauseMenu');
+  if (pauseMenu) pauseMenu.classList.remove('show');
+
+  renderMenuLayout();
+}
 
 function beginGame() {
-  overlay.classList.add('hidden');
+  // OCULTAR O MENU INICIAL TOTALMENTE
+  const overlay = document.getElementById('overlay');
+  if (overlay) {
+    overlay.classList.add('hidden');
+    overlay.style.display = 'none';
+  }
+
+  const pauseMenu = document.getElementById('pauseMenu');
+  if (pauseMenu) pauseMenu.classList.remove('show');
+
   gameRunning = true;
+  isPaused = false;
+
   applyMapTheme();
   inPlane = true;
   planeJumpReady = false;
@@ -34,14 +239,19 @@ function beginGame() {
   const cameraAnchor = planeLocalPosition.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), planeRotation);
   yawObject.position.copy(planePosition).add(cameraAnchor);
 
-  // Reset wave
   waveEnemiesTotal = 5;
   waveEnemiesKilled = 0;
+  kills = 0;
+  deaths = 0;
+  wave = 1;
+  document.getElementById('killCount').textContent = kills;
+  document.getElementById('deathCount').textContent = deaths;
   updateWaveHud();
 
   setWind(true);
   lastTime = performance.now();
   canvas.requestPointerLock();
+
   if (bots.filter(bot => bot.alive).length === 0) {
     for (let i = 0; i < 5; i++) spawnBot();
   }
@@ -49,123 +259,132 @@ function beginGame() {
   animate();
 }
 
-function showStore() {
-  const cards = WEAPONS.map((w, i) => `
-    <div class="storeCard">
-      <b>${w.name}</b>
-      <small>${w.damage} dano · ${w.magSize} projéteis${w.pellets ? ' · ' + w.pellets + ' pellets' : ''}<br>
-      ${unlockedWeapons.has(w.key) ? 'ADQUIRIDA' : w.price + ' créditos'}</small><br>
-      <button data-buy="${i}" ${unlockedWeapons.has(w.key) ? 'disabled' : ''}>${unlockedWeapons.has(w.key) ? 'EQUIPADA' : 'COMPRAR'}</button>
-    </div>
-  `).join('');
-  overlay.innerHTML = `
-    <div class="menuPanel">
-      <h2>ARSENAL</h2>
-      <p class="credits">CRÉDITOS: ${credits}</p>
-      <div class="menuGrid">${cards}</div>
-      <div class="menuActions">
-        <button class="secondary" id="backMenu">VOLTAR</button>
+// =====================================================================
+// MENU DE PAUSA IN-GAME (DISTINTO DO INICIAL)
+// =====================================================================
+function renderPauseMenuContent() {
+  const pauseMenu = document.getElementById('pauseMenu');
+  if (!pauseMenu) return;
+
+  const map = MAPS[selectedMap];
+  const curWeapon = currentWeapon();
+  const accuracy = player.accuracy.shots > 0 ? Math.round(player.accuracy.hits / player.accuracy.shots * 100) : 0;
+
+  pauseMenu.innerHTML = `
+    <div class="pauseContainer">
+      <div class="pauseHeader">
+        <h2>PAUSA DE COMBATE</h2>
+        <div class="zoneBadge">ZONA: ${map.name.toUpperCase()}</div>
+      </div>
+      <div class="pauseBody">
+        <div class="pauseLeft">
+          <div class="pauseSectionTitle">DADOS DA PARTIDA</div>
+          <div class="pauseStatsGrid">
+            <div class="pauseStatBox"><label>Onda Atual</label><val>ONDA ${wave}</val></div>
+            <div class="pauseStatBox"><label>Inimigos Na Wave</label><val>${waveEnemiesKilled} / ${waveEnemiesTotal}</val></div>
+            <div class="pauseStatBox"><label>Eliminações</label><val style="color:#4fd8ff;">${kills}</val></div>
+            <div class="pauseStatBox"><label>Mortes</label><val style="color:#ff3838;">${deaths}</val></div>
+            <div class="pauseStatBox"><label>Kill Streak</label><val style="color:#ffcc44;">${player.killStreak}</val></div>
+            <div class="pauseStatBox"><label>Precisão</label><val>${accuracy}%</val></div>
+          </div>
+          <div class="pauseSectionTitle">EQUIPAMENTO & RECURSOS</div>
+          <div style="font-size:13px; font-weight:600; color:#b9d9e8; line-height:1.7;">
+            <div>🔫 Arma Equipada: <strong style="color:#4fd8ff;">${curWeapon.name}</strong></div>
+            <div>🛡️ Armadura: <strong style="color:#4fd8ff;">${Math.round(player.armor)} / 100</strong></div>
+            <div>💊 Kits Médicos: <strong>${inventory.medkits}</strong> | 🧱 Barricadas: <strong>${inventory.barricades}</strong> | 💣 Granadas: <strong>${inventory.grenades}</strong></div>
+          </div>
+        </div>
+        <div class="pauseRight">
+          <div class="pauseSectionTitle">CONFIGURAÇÕES RÁPIDAS</div>
+          <div class="settingsGroup" style="gap:10px; margin-bottom:20px;">
+            <div class="settingRow" style="padding:8px 14px;">
+              <label style="font-size:11px;">SENSIBILIDADE</label>
+              <div class="settingControl">
+                <input type="range" id="pauseSens" min="0.0005" max="0.0050" step="0.0001" value="${settings.sensitivity}">
+              </div>
+            </div>
+            <div class="settingRow" style="padding:8px 14px;">
+              <label style="font-size:11px;">FOV (${settings.fov}°)</label>
+              <div class="settingControl">
+                <input type="range" id="pauseFov" min="60" max="110" step="1" value="${settings.fov}">
+              </div>
+            </div>
+            <div class="settingRow" style="padding:8px 14px;">
+              <label style="font-size:11px;">VOLUME</label>
+              <div class="settingControl">
+                <input type="range" id="pauseVol" min="0" max="1" step="0.05" value="${settings.volume}">
+              </div>
+            </div>
+          </div>
+          <div class="pauseActions">
+            <button class="btnAAA" onclick="resumeGame()">CONTINUAR COMBATE</button>
+            <button class="btnAAA secondary" onclick="restartMatch()">REINICIAR PARTIDA</button>
+            <button class="btnAAA danger" onclick="showExitModal()">VOLTAR AO MENU PRINCIPAL</button>
+          </div>
+        </div>
       </div>
     </div>
   `;
-  overlay.classList.remove('hidden');
-  document.getElementById('backMenu').onclick = showMainMenu;
-  overlay.querySelectorAll('[data-buy]').forEach(btn => {
-    btn.onclick = () => {
-      const w = WEAPONS[+btn.dataset.buy];
-      if (credits < w.price) { showStatus('CRÉDITOS INSUFICIENTES'); return; }
-      credits -= w.price;
-      unlockedWeapons.add(w.key);
-      switchWeapon(+btn.dataset.buy);
-      saveProgress();
-      showStore();
-    };
-  });
+
+  // Bind pause settings
+  const pSens = document.getElementById('pauseSens');
+  const pFov = document.getElementById('pauseFov');
+  const pVol = document.getElementById('pauseVol');
+
+  if (pSens) pSens.oninput = (e) => { settings.sensitivity = parseFloat(e.target.value); saveSettings(); };
+  if (pFov) pFov.oninput = (e) => { applyFov(parseInt(e.target.value)); };
+  if (pVol) pVol.oninput = (e) => { settings.volume = parseFloat(e.target.value); updateMasterVolume(); saveSettings(); };
+
+  attachUiSoundEvents();
 }
 
-function showBriefing() {
-  const map = MAPS[selectedMap];
-  overlay.innerHTML = `
-    <div class="menuPanel">
-      <h2>OPERAÇÃO: QUEDA FANTASMA</h2>
-      <p>Após a evacuação falhar, seu esquadrão recebe uma única rota de entrada: salto de alta altitude sobre <strong>${map.name}</strong>.
-      Tome o terreno, elimine os hostis e extraia recursos para ampliar seu arsenal.</p>
-      <div class="keys">
-        <div><b>1–5</b></div><div>Selecionar arma</div>
-        <div><b>R</b></div><div>Recarregar</div>
-        <div><b>SHIFT</b></div><div>Correr</div>
-        <div><b>G</b></div><div>Granada</div>
-        <div><b>C</b></div><div>Dash tático</div>
-        <div><b>CTRL</b></div><div>Agachar</div>
-        <div><b>E</b></div><div>Interagir</div>
-        <div><b>H</b></div><div>Kit médico</div>
-        <div><b>B</b></div><div>Barricada</div>
-        <div><b>I</b></div><div>Inventário</div>
-      </div>
-      <div class="menuActions">
-        <button id="deployBtn">SALTAR DO AVIÃO</button>
-        <button class="secondary" id="backMenu">VOLTAR</button>
-      </div>
-    </div>
-  `;
-  overlay.classList.remove('hidden');
-  const deployBtn = document.getElementById('deployBtn');
-  const backMenu = document.getElementById('backMenu');
-  if (deployBtn) deployBtn.addEventListener('click', beginGame);
-  if (backMenu) backMenu.addEventListener('click', showMainMenu);
+function togglePauseMenu() {
+  if (!gameRunning) return;
+  isPaused = !isPaused;
+  const pauseMenu = document.getElementById('pauseMenu');
+
+  if (isPaused) {
+    document.exitPointerLock();
+    renderPauseMenuContent();
+    if (pauseMenu) pauseMenu.classList.add('show');
+  } else {
+    if (pauseMenu) pauseMenu.classList.remove('show');
+    canvas.requestPointerLock();
+  }
+}
+
+function resumeGame() {
+  isPaused = false;
+  const pauseMenu = document.getElementById('pauseMenu');
+  if (pauseMenu) pauseMenu.classList.remove('show');
+  canvas.requestPointerLock();
+}
+
+function restartMatch() {
+  isPaused = false;
+  const pauseMenu = document.getElementById('pauseMenu');
+  if (pauseMenu) pauseMenu.classList.remove('show');
+  respawnPlayer();
+  beginGame();
 }
 
 function exitGame() {
   gameRunning = false;
+  isPaused = false;
   dropActive = false;
   transportPlane.visible = false;
   setWind(false);
-  overlay.classList.remove('hidden');
+  document.exitPointerLock();
+
+  const pauseMenu = document.getElementById('pauseMenu');
+  if (pauseMenu) pauseMenu.classList.remove('show');
+
   showMainMenu();
-}
-
-function showMainMenu() {
-  const maps = Object.entries(MAPS).map(([key, map]) => `
-    <div class="mapCard ${key === selectedMap ? 'selected' : ''}" data-map="${key}">
-      <b>${map.name}</b>
-      <small>${map.subtitle}</small>
-    </div>
-  `).join('');
-
-  const accuracy = player.accuracy.shots > 0 ? Math.round(player.accuracy.hits / player.accuracy.shots * 100) : 0;
-
-  overlay.innerHTML = `
-    <div class="menuPanel">
-      <h1>OPERAÇÃO WARZONE</h1>
-      <p>Um FPS de sobrevivência em zona aberta. Escolha o teatro de operações, prepare o equipamento e inicie a queda.</p>
-      <div class="menuGrid">${maps}</div>
-      <div class="statsGrid">
-        <span class="stat-label">Nível</span><span class="stat-value">${player.level}</span>
-        <span class="stat-label">XP</span><span class="stat-value">${player.xp} / ${player.level * XP_PER_LEVEL}</span>
-        <span class="stat-label">Kills Totais</span><span class="stat-value">${player.totalKills}</span>
-        <span class="stat-label">Headshots</span><span class="stat-value">${player.headshots}</span>
-        <span class="stat-label">Melhor Streak</span><span class="stat-value">${player.bestStreak}</span>
-        <span class="stat-label">Precisão</span><span class="stat-value">${accuracy}%</span>
-      </div>
-      <div class="menuActions">
-        <button id="briefingBtn">INICIAR OPERAÇÃO</button>
-        <button id="storeBtn" class="secondary">LOJA E ARSENAL</button>
-        <button id="exitBtn" class="secondary">SAIR DO JOGO</button>
-      </div>
-      <p class="credits">CRÉDITOS DISPONÍVEIS: ${credits}</p>
-    </div>
-  `;
-  overlay.classList.remove('hidden');
-  overlay.querySelectorAll('[data-map]').forEach(card => {
-    card.onclick = () => { selectedMap = card.dataset.map; applyMapTheme(); showMainMenu(); };
-  });
-  document.getElementById('briefingBtn').onclick = showBriefing;
-  document.getElementById('storeBtn').onclick = showStore;
-  document.getElementById('exitBtn').onclick = showExitModal;
 }
 
 function showExitModal() {
   const modal = document.getElementById('confirmModal');
+  if (!modal) return;
   modal.classList.add('show');
   modal.classList.remove('hidden');
   document.getElementById('confirmYes').onclick = () => {
@@ -177,35 +396,54 @@ function showExitModal() {
     modal.classList.remove('show');
     modal.classList.add('hidden');
   };
+  attachUiSoundEvents();
 }
 
 function showGameOverScreen() {
   gameRunning = false;
+  isPaused = false;
+  document.exitPointerLock();
+  setWind(false);
+
   const accuracy = player.accuracy.shots > 0 ? Math.round(player.accuracy.hits / player.accuracy.shots * 100) : 0;
-  overlay.innerHTML = `
-    <h1>VOCÊ FOI ELIMINADO</h1>
-    <div class="statsGrid" style="max-width:320px;">
-      <span class="stat-label">Eliminações</span><span class="stat-value">${kills}</span>
-      <span class="stat-label">Onda Alcançada</span><span class="stat-value">${wave}</span>
-      <span class="stat-label">Melhor Streak</span><span class="stat-value">${player.bestStreak}</span>
-      <span class="stat-label">Headshots</span><span class="stat-value">${player.headshots}</span>
-      <span class="stat-label">Precisão</span><span class="stat-value">${accuracy}%</span>
-      <span class="stat-label">Nível</span><span class="stat-value">${player.level}</span>
-    </div>
-    <button id="respawnBtn">VOLTAR AO COMBATE</button>
-    <button id="menuBtn" class="secondary">MENU PRINCIPAL</button>
-  `;
+  const overlay = document.getElementById('overlay');
+
+  overlay.style.display = 'flex';
   overlay.classList.remove('hidden');
+
+  overlay.innerHTML = `
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px;">
+      <h1 style="font-family:'Orbitron',sans-serif; font-size:48px; color:#ff3838; text-shadow:0 0 30px #ff3838; letter-spacing:4px;">VOCÊ FOI ELIMINADO</h1>
+      <p style="font-size:16px; color:#9fb3d9; margin-bottom:24px;">Operação encerrada. Seu relatório de combate:</p>
+      <div class="statsGrid" style="max-width:360px; margin-bottom:30px; font-size:15px;">
+        <span class="stat-label">Eliminações</span><span class="stat-value">${kills}</span>
+        <span class="stat-label">Onda Alcançada</span><span class="stat-value">${wave}</span>
+        <span class="stat-label">Melhor Kill Streak</span><span class="stat-value">${player.bestStreak}</span>
+        <span class="stat-label">Acertos na Cabeça</span><span class="stat-value">${player.headshots}</span>
+        <span class="stat-label">Precisão</span><span class="stat-value">${accuracy}%</span>
+        <span class="stat-label">Nível Atual</span><span class="stat-value">NV ${player.level}</span>
+      </div>
+      <div style="display:flex; gap:16px;">
+        <button class="btnAAA" id="respawnBtn">VOLTAR AO COMBATE</button>
+        <button class="btnAAA secondary" id="menuBtn">MENU PRINCIPAL</button>
+      </div>
+    </div>
+  `;
+
   document.getElementById('respawnBtn').addEventListener('click', () => {
     respawnPlayer();
     overlay.classList.add('hidden');
+    overlay.style.display = 'none';
     gameRunning = true;
     lastTime = performance.now();
     canvas.requestPointerLock();
     showStatus('DE VOLTA AO COMBATE', 1500);
     animate();
   });
+
   document.getElementById('menuBtn').addEventListener('click', () => {
     showMainMenu();
   });
+
+  attachUiSoundEvents();
 }

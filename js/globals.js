@@ -3,6 +3,32 @@
 // GLOBALS.JS — Three.js Setup + Estado Compartilhado
 // =====================================================================
 
+// --- Settings do Usuário ---
+const settings = {
+  sensitivity: 0.0022,
+  fov: 75,
+  volume: 0.8
+};
+
+function loadSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('warzone_settings'));
+    if (saved) {
+      settings.sensitivity = saved.sensitivity ?? 0.0022;
+      settings.fov = saved.fov ?? 75;
+      settings.volume = saved.volume ?? 0.8;
+    }
+  } catch (_) {}
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem('warzone_settings', JSON.stringify(settings));
+  } catch (_) {}
+}
+
+loadSettings();
+
 // --- Renderer ---
 const canvas = document.getElementById('gameCanvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -20,13 +46,20 @@ scene.background = new THREE.Color(0x8fc7ff);
 scene.fog = new THREE.Fog(0x8fc7ff, 60, 260);
 
 // --- Camera Rig ---
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
+const camera = new THREE.PerspectiveCamera(settings.fov, window.innerWidth / window.innerHeight, 0.1, 500);
 const pitchObject = new THREE.Object3D();
 pitchObject.add(camera);
 const yawObject = new THREE.Object3D();
 yawObject.add(pitchObject);
 yawObject.position.set(0, 2, 30);
 scene.add(yawObject);
+
+function applyFov(fovVal) {
+  settings.fov = fovVal;
+  camera.fov = fovVal;
+  camera.updateProjectionMatrix();
+  saveSettings();
+}
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -110,12 +143,16 @@ let currentWeaponIdx = 0;
 let credits = 750;
 let inventoryOpen = false;
 let gameRunning = false;
+let isPaused = false;
 let lastTime = performance.now();
 let yaw = 0, pitch = 0;
 let pointerLocked = false;
 let recoilOffset = 0;
 let hitmarkerTimeout = null;
 let selectedMap = 'verdant';
+
+// Câmera de menu 3D
+let menuCameraAngle = 0;
 
 // Avião
 let dropActive = false;
@@ -137,7 +174,7 @@ const keys = {};
 const raycaster = new THREE.Raycaster();
 
 // =====================================================================
-// INVENTÁRIO
+// INVENTÁRIO & DESBLOQUEIOS
 // =====================================================================
 const inventory = { medkits: 1, barricades: 2, supplies: 0, grenades: 3 };
 const unlockedWeapons = new Set(['rifle', 'pistol']);
@@ -176,7 +213,7 @@ const player = {
 };
 
 // =====================================================================
-// KILL STREAKS — DEFINIÇÕES
+// KILL STREAKS
 // =====================================================================
 const streakRewards = [
   { kills: 3, name: 'UAV', desc: 'Inimigos revelados no mapa', active: false, timer: 0, duration: 15000 },
@@ -199,7 +236,7 @@ let waveBonusGiven = false;
 let waveCountdownInterval = null;
 
 // =====================================================================
-// GRANADAS
+// GRANADAS & DASH & OUTROS
 // =====================================================================
 let lastGrenadeTime = 0;
 const grenadeObjects = [];
@@ -208,9 +245,6 @@ const GRENADE_FUSE = 2.5;
 const GRENADE_DAMAGE = 80;
 const GRENADE_RADIUS = 8;
 
-// =====================================================================
-// DASH
-// =====================================================================
 let lastDashTime = 0;
 const DASH_COOLDOWN = 1500;
 const DASH_COST = 30;
@@ -220,38 +254,28 @@ let dashActive = false;
 let dashDirection = new THREE.Vector3();
 let dashTimer = 0;
 
-// =====================================================================
-// INDICADORES DE DANO DIRECIONAL
-// =====================================================================
 const damageIndicators = [];
-
-// =====================================================================
-// SCREEN SHAKE
-// =====================================================================
 let shakeIntensity = 0;
 const SHAKE_DECAY = 0.88;
 
-// =====================================================================
-// XP
-// =====================================================================
 const XP_PER_KILL = 50;
 const XP_PER_HEADSHOT = 100;
 const XP_PER_WAVE = 150;
 const XP_PER_LEVEL = 500;
 
 // =====================================================================
-// LOAD/SAVE (localStorage)
+// PERSISTÊNCIA
 // =====================================================================
 function loadProgress() {
   try {
     const data = JSON.parse(localStorage.getItem('warzone_progress'));
     if (data) {
-      credits = data.credits || 750;
-      player.level = data.level || 1;
-      player.xp = data.xp || 0;
-      player.totalKills = data.totalKills || 0;
-      player.headshots = data.headshots || 0;
-      player.bestStreak = data.bestStreak || 0;
+      credits = data.credits ?? 750;
+      player.level = data.level ?? 1;
+      player.xp = data.xp ?? 0;
+      player.totalKills = data.totalKills ?? 0;
+      player.headshots = data.headshots ?? 0;
+      player.bestStreak = data.bestStreak ?? 0;
       if (data.weapons) data.weapons.forEach(w => unlockedWeapons.add(w));
     }
   } catch (_) {}

@@ -1,10 +1,24 @@
 // =====================================================================
-// AUDIO.JS — Sistema de Som Procedural
+// AUDIO.JS — Sistema de Som Procedural + Master Volume
 // =====================================================================
 
 let audioContext = null;
+let masterGain = null;
+
 function audioCtx() {
-  return audioContext || (audioContext = new (window.AudioContext || window.webkitAudioContext)());
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioContext.createGain();
+    masterGain.gain.value = settings.volume;
+    masterGain.connect(audioContext.destination);
+  }
+  return audioContext;
+}
+
+function updateMasterVolume() {
+  if (masterGain && audioContext) {
+    masterGain.gain.setValueAtTime(settings.volume, audioContext.currentTime);
+  }
 }
 
 function unlockAudio() {
@@ -33,7 +47,9 @@ function playSound(kind) {
       dash:     [280, .04, 'triangle'],
       streak:   [440, .12, 'sine'],
       armor:    [520, .06, 'triangle'],
-      levelup:  [660, .18, 'sine']
+      levelup:  [660, .18, 'sine'],
+      ui_hover: [480, .02, 'sine'],
+      ui_click: [750, .035, 'square']
     }[kind] || [220, .06, 'sine'];
 
     const osc = ctx.createOscillator();
@@ -47,10 +63,11 @@ function playSound(kind) {
     filter.type = 'lowpass';
     filter.frequency.value = kind === 'shotgun' ? 900 : kind === 'explosion' ? 400 : 1800;
 
-    gain.gain.setValueAtTime(kind === 'explosion' ? 0.18 : 0.12, now);
+    const baseVol = (kind === 'ui_hover' ? 0.04 : kind === 'ui_click' ? 0.08 : kind === 'explosion' ? 0.18 : 0.12);
+    gain.gain.setValueAtTime(baseVol, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + cfg[1]);
 
-    osc.connect(filter).connect(gain).connect(ctx.destination);
+    osc.connect(filter).connect(gain).connect(masterGain || ctx.destination);
     osc.start(now);
     osc.stop(now + cfg[1]);
 
@@ -63,7 +80,7 @@ function playSound(kind) {
       osc2.frequency.exponentialRampToValueAtTime(18, now + 0.4);
       gain2.gain.setValueAtTime(0.15, now);
       gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-      osc2.connect(gain2).connect(ctx.destination);
+      osc2.connect(gain2).connect(masterGain || ctx.destination);
       osc2.start(now);
       osc2.stop(now + 0.4);
     }
@@ -77,7 +94,7 @@ function playSound(kind) {
         o.frequency.value = freq;
         g.gain.setValueAtTime(0.08, now + 0.08 * (i + 1));
         g.gain.exponentialRampToValueAtTime(0.001, now + 0.08 * (i + 1) + 0.15);
-        o.connect(g).connect(ctx.destination);
+        o.connect(g).connect(masterGain || ctx.destination);
         o.start(now + 0.08 * (i + 1));
         o.stop(now + 0.08 * (i + 1) + 0.15);
       });
@@ -105,7 +122,7 @@ function setWind(active) {
     filter.frequency.value = 520;
     filter.Q.value = .4;
     gain.gain.value = .025;
-    source.connect(filter).connect(gain).connect(ctx.destination);
+    source.connect(filter).connect(gain).connect(masterGain || ctx.destination);
     source.start();
     windNode = source;
   } catch (_) {}

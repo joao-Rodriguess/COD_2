@@ -1,141 +1,152 @@
 /* =====================================================================
-   RESET & BASE
+   WARZONE CLONE — AAA PROFESSIONAL STYLES (VANILLA CSS)
    ===================================================================== */
-* { margin:0; padding:0; box-sizing:border-box; }
-html, body { width:100%; height:100%; overflow:hidden; background:#000; font-family:'Segoe UI', Arial, sans-serif; }
-#gameCanvas { display:block; }
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap');
+
+* { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+html, body {
+  width:100%; height:100%; overflow:hidden; background:#04070d;
+  font-family:'Rajdhani', 'Segoe UI', Arial, sans-serif;
+  color:#eaf2ff;
+}
+
+#gameCanvas { display:block; width:100%; height:100%; }
+
+.hidden { display:none !important; }
 
 /* =====================================================================
-   CROSSHAIR & HITMARKER
+   CROSSHAIR & HITMARKER & EFFECTS
    ===================================================================== */
 #crosshair {
   position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-  width:22px; height:22px; pointer-events:none; z-index:10;
+  width:24px; height:24px; pointer-events:none; z-index:10;
 }
 #crosshair::before, #crosshair::after {
-  content:''; position:absolute; background:rgba(255,255,255,0.85);
+  content:''; position:absolute; background:rgba(255,255,255,0.9); box-shadow:0 0 4px rgba(255,255,255,0.5);
 }
 #crosshair::before { left:50%; top:0; width:2px; height:8px; transform:translateX(-50%); }
 #crosshair::after { top:50%; left:0; height:2px; width:8px; transform:translateY(-50%); }
-#crosshair .h2, #crosshair .v2 { position:absolute; background:rgba(255,255,255,0.85); }
+#crosshair .h2, #crosshair .v2 { position:absolute; background:rgba(255,255,255,0.9); box-shadow:0 0 4px rgba(255,255,255,0.5); }
 #crosshair .h2 { right:0; top:50%; width:8px; height:2px; transform:translateY(-50%); }
 #crosshair .v2 { left:50%; bottom:0; width:2px; height:8px; transform:translateX(-50%); }
 
 #hitmarker {
-  position:fixed; top:50%; left:50%; width:26px; height:26px; transform:translate(-50%,-50%);
-  pointer-events:none; z-index:11; opacity:0; transition:opacity 0.12s;
+  position:fixed; top:50%; left:50%; width:28px; height:28px; transform:translate(-50%,-50%);
+  pointer-events:none; z-index:11; opacity:0; transition:opacity 0.08s ease-out;
 }
 #hitmarker.show { opacity:1; }
 #hitmarker::before, #hitmarker::after {
-  content:''; position:absolute; background:#ff3838; width:14px; height:2px; top:12px;
+  content:''; position:absolute; background:#ff3838; width:16px; height:2px; top:13px;
+  box-shadow:0 0 8px #ff3838;
 }
 #hitmarker::before { transform:rotate(45deg); left:0; }
 #hitmarker::after { transform:rotate(-45deg); right:0; }
 
+#damageFlash {
+  position:fixed; inset:0; pointer-events:none; z-index:9;
+  background:radial-gradient(ellipse at center, rgba(255,0,0,0) 30%, rgba(255,0,0,0.55) 100%);
+  opacity:0; transition:opacity 0.2s ease-out;
+}
+#damageFlash.show { opacity:1; }
+
 /* =====================================================================
-   HUD
+   HUD IN-GAME
    ===================================================================== */
 #hud {
   position:fixed; inset:0; pointer-events:none; z-index:8; color:#eaf2ff;
 }
 
-/* --- Top Bar --- */
 #topBar {
   position:absolute; top:18px; left:0; right:0; display:flex; justify-content:center; gap:40px;
-  font-size:15px; font-weight:600; text-shadow:0 0 6px #000;
+  font-family:'Orbitron', sans-serif; font-size:14px; font-weight:700; letter-spacing:1.5px;
+  text-shadow:0 0 8px #000;
 }
-#topBar span.val { color:#4fd8ff; font-weight:800; }
+#topBar span.val { color:#4fd8ff; font-weight:900; }
 
-/* --- Bottom Left: Saúde + Armadura + Stamina --- */
 #bottomLeft {
   position:absolute; bottom:24px; left:26px;
 }
 #healthWrap { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
-#healthBarBg { width:220px; height:16px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.25); border-radius:3px; overflow:hidden; }
+#healthBarBg { width:220px; height:16px; background:rgba(4,10,20,0.75); border:1px solid rgba(255,255,255,0.2); border-radius:4px; overflow:hidden; backdrop-filter:blur(4px); }
 #healthBarFill { height:100%; width:100%; background:linear-gradient(90deg,#ff3838,#ff8a38); transition:width 0.15s; }
-#healthBarFill.low { background:linear-gradient(90deg,#d71920,#ff3838); animation:pulseHealth .7s infinite alternate; }
-@keyframes pulseHealth { to { filter:brightness(1.45); } }
-#healthText { font-size:14px; font-weight:bold; text-shadow:0 0 4px #000; min-width:34px; }
+#healthBarFill.low { background:linear-gradient(90deg,#d71920,#ff3838); animation:pulseHealth .6s infinite alternate; }
+@keyframes pulseHealth { to { filter:brightness(1.5); } }
+#healthText { font-family:'Orbitron', sans-serif; font-size:14px; font-weight:800; text-shadow:0 0 6px #000; min-width:34px; }
 
-/* NEW: Barra de Armadura */
 #armorWrap { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
-#armorBarBg { width:220px; height:10px; background:rgba(0,0,0,0.5); border:1px solid rgba(79,148,255,0.3); border-radius:3px; overflow:hidden; }
-#armorBarFill { height:100%; width:0%; background:linear-gradient(90deg,#3a7bff,#4fd8ff); transition:width 0.2s; }
-#armorText { font-size:11px; font-weight:bold; color:#4fd8ff; text-shadow:0 0 4px #000; min-width:28px; }
-#armorIcon { font-size:12px; color:#4fd8ff; margin-right:2px; }
+#armorBarBg { width:220px; height:10px; background:rgba(4,10,20,0.75); border:1px solid rgba(79,148,255,0.35); border-radius:3px; overflow:hidden; backdrop-filter:blur(4px); }
+#armorBarFill { height:100%; width:0%; background:linear-gradient(90deg,#2a6bff,#4fd8ff); transition:width 0.2s; }
+#armorText { font-family:'Orbitron', sans-serif; font-size:11px; font-weight:700; color:#4fd8ff; text-shadow:0 0 4px #000; min-width:28px; }
+#armorIcon { font-size:12px; color:#4fd8ff; }
 
-/* NEW: Barra de Stamina */
 #staminaWrap { display:flex; align-items:center; gap:10px; }
-#staminaBarBg { width:220px; height:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,200,68,0.2); border-radius:3px; overflow:hidden; }
+#staminaBarBg { width:220px; height:6px; background:rgba(4,10,20,0.6); border:1px solid rgba(255,200,68,0.25); border-radius:3px; overflow:hidden; }
 #staminaBarFill { height:100%; width:100%; background:linear-gradient(90deg,#ffcc44,#ffe680); transition:width 0.1s; }
 #staminaBarFill.exhausted { background:linear-gradient(90deg,#cc4444,#ff6644); }
 
-/* --- Bottom Right: Munição + Arma + Granadas --- */
 #bottomRight {
   position:absolute; bottom:22px; right:30px; text-align:right;
 }
-#ammoText { font-size:38px; font-weight:800; text-shadow:0 0 8px rgba(0,0,0,0.8); letter-spacing:1px; }
-#ammoSub { font-size:14px; color:#9fb3d9; text-shadow:0 0 4px #000; }
-#weaponName { font-size:13px; color:#4fd8ff; text-transform:uppercase; letter-spacing:2px; margin-top:2px; text-shadow:0 0 6px rgba(79,216,255,0.6); }
+#ammoText { font-family:'Orbitron', sans-serif; font-size:42px; font-weight:900; text-shadow:0 0 12px rgba(0,0,0,0.9); letter-spacing:1px; }
+#ammoSub { font-size:16px; color:#9fb3d9; text-shadow:0 0 4px #000; font-family:'Rajdhani', sans-serif; }
+#weaponName { font-family:'Orbitron', sans-serif; font-size:13px; color:#4fd8ff; text-transform:uppercase; letter-spacing:2px; margin-top:2px; text-shadow:0 0 8px rgba(79,216,255,0.7); }
 
-/* NEW: Contador de Granadas */
 #grenadeWrap {
   display:flex; align-items:center; gap:6px; justify-content:flex-end;
-  margin-top:8px; font-size:13px; color:#ffcc44; text-shadow:0 0 4px #000;
+  margin-top:8px; font-size:14px; color:#ffcc44; text-shadow:0 0 4px #000; font-weight:700;
 }
-#grenadeWrap .icon { font-size:16px; }
+#grenadeWrap .icon { font-size:18px; }
 
-/* --- Minimap --- */
 #minimapWrap {
   position:absolute; top:18px; right:22px; width:150px; height:150px;
-  background:rgba(0,0,0,0.5); border:2px solid rgba(255,255,255,0.25); border-radius:6px; overflow:hidden;
+  background:rgba(4,10,20,0.75); border:2px solid rgba(79,216,255,0.4); border-radius:8px; overflow:hidden;
+  box-shadow:0 0 16px rgba(0,0,0,0.6); backdrop-filter:blur(4px);
 }
 
-/* --- Kill Feed --- */
 #killFeed {
   position:absolute; top:70px; right:22px; display:flex; flex-direction:column; gap:6px; align-items:flex-end;
 }
 .killMsg {
-  font-size:13px; background:rgba(0,0,0,0.55); padding:5px 10px; border-radius:4px; color:#ff8a38;
-  animation: fadeOut 3s forwards;
+  font-size:13px; font-weight:600; background:rgba(4,10,20,0.85); padding:6px 12px; border-radius:4px; border-left:3px solid #ff8a38; color:#ff8a38;
+  animation: fadeOut 3s forwards; backdrop-filter:blur(4px);
 }
-@keyframes fadeOut { 0%{opacity:1;} 80%{opacity:1;} 100%{opacity:0;} }
+@keyframes fadeOut { 0%{opacity:1; transform:translateX(10px);} 10%{transform:none;} 80%{opacity:1;} 100%{opacity:0;} }
 
-/* --- Reload --- */
 #reloadText {
-  position:absolute; bottom:70px; right:30px; font-size:15px; color:#ffcc44;
-  text-shadow:0 0 6px #000; opacity:0; transition:opacity 0.2s; font-weight:bold; letter-spacing:1px;
+  position:absolute; bottom:76px; right:30px; font-family:'Orbitron', sans-serif; font-size:14px; color:#ffcc44;
+  text-shadow:0 0 8px #000; opacity:0; transition:opacity 0.2s; font-weight:800; letter-spacing:2px;
 }
 #reloadText.show { opacity:1; }
 
-/* --- Status --- */
-#statusText { position:absolute; top:48px; left:50%; transform:translateX(-50%); color:#ffcc44; font-size:12px; font-weight:800; letter-spacing:1.5px; text-shadow:0 0 6px #000; opacity:0; transition:opacity .2s; }
+#statusText {
+  position:absolute; top:48px; left:50%; transform:translateX(-50%); color:#ffcc44;
+  font-family:'Orbitron', sans-serif; font-size:13px; font-weight:800; letter-spacing:2px; text-shadow:0 0 8px #000;
+  opacity:0; transition:opacity .2s; background:rgba(0,0,0,0.5); padding:4px 16px; border-radius:12px;
+}
 #statusText.show { opacity:1; }
 
-/* --- Damage Flash --- */
-#damageFlash {
-  position:fixed; inset:0; pointer-events:none; z-index:9;
-  background:radial-gradient(ellipse at center, rgba(255,0,0,0) 40%, rgba(255,0,0,0.45) 100%);
-  opacity:0; transition:opacity 0.25s;
+#mapLabel { position:absolute; top:48px; left:25px; font-size:11px; letter-spacing:2px; color:#b9d9e8; font-weight:700; text-shadow:0 0 6px #000; }
+
+#inventoryPanel {
+  position:absolute; right:24px; bottom:110px; width:240px; padding:16px;
+  border:1px solid rgba(79,216,255,0.45); border-radius:10px; background:rgba(4,10,20,0.92); color:#eaf2ff;
+  opacity:0; transform:translateY(8px); transition:.18s; backdrop-filter:blur(8px);
 }
-#damageFlash.show { opacity:1; }
-
-/* --- Map Label --- */
-#mapLabel { position:absolute; top:48px; left:25px; font-size:11px; letter-spacing:1.5px; color:#b9d9e8; text-shadow:0 0 5px #000; }
-
-/* --- Inventory Panel --- */
-#inventoryPanel { position:absolute; right:24px; bottom:105px; width:230px; padding:14px; border:1px solid rgba(79,216,255,.45); border-radius:8px; background:rgba(4,10,20,.88); color:#eaf2ff; opacity:0; transform:translateY(8px); transition:.18s; }
 #inventoryPanel.show { opacity:1; transform:none; }
-#inventoryPanel h3 { color:#4fd8ff; font-size:13px; letter-spacing:1px; margin-bottom:9px; }
-.invRow { display:flex; justify-content:space-between; padding:5px 0; border-top:1px solid rgba(255,255,255,.1); font-size:12px; }
+#inventoryPanel h3 { font-family:'Orbitron', sans-serif; color:#4fd8ff; font-size:13px; letter-spacing:1px; margin-bottom:10px; }
+.invRow { display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid rgba(255,255,255,0.1); font-size:13px; font-weight:600; }
 .invRow span:last-child { color:#ffcc44; font-weight:bold; }
 
-/* --- Interact Hint --- */
-#interactHint { position:absolute; left:50%; bottom:29%; transform:translateX(-50%); padding:7px 12px; background:rgba(0,0,0,.65); border-radius:4px; color:#fff; font-size:12px; opacity:0; transition:opacity .15s; }
+#interactHint {
+  position:absolute; left:50%; bottom:29%; transform:translateX(-50%); padding:8px 16px;
+  background:rgba(4,10,20,0.85); border:1px solid rgba(79,216,255,0.4); border-radius:6px; color:#fff;
+  font-family:'Orbitron', sans-serif; font-size:12px; font-weight:700; letter-spacing:1px; opacity:0; transition:opacity .15s; backdrop-filter:blur(4px);
+}
 #interactHint.show { opacity:1; }
 
 /* =====================================================================
-   NEW: KILL STREAK
+   KILL STREAKS & WAVE PROGRESS & XP
    ===================================================================== */
 #streakWrap {
   position:absolute; top:80px; left:50%; transform:translateX(-50%);
@@ -144,202 +155,265 @@ html, body { width:100%; height:100%; overflow:hidden; background:#000; font-fam
 }
 #streakWrap.show { opacity:1; }
 #streakName {
-  font-size:22px; font-weight:900; letter-spacing:3px;
-  color:#ffcc44; text-shadow:0 0 16px rgba(255,204,68,0.7), 0 0 32px rgba(255,160,0,0.4);
+  font-family:'Orbitron', sans-serif; font-size:24px; font-weight:900; letter-spacing:3px;
+  color:#ffcc44; text-shadow:0 0 16px rgba(255,204,68,0.8), 0 0 32px rgba(255,160,0,0.5);
   animation: streakPulse 0.6s ease-out;
 }
-#streakDesc { font-size:12px; color:#ffe680; letter-spacing:1px; }
+#streakDesc { font-size:13px; font-weight:600; color:#ffe680; letter-spacing:1px; }
 @keyframes streakPulse {
   0% { transform:scale(0.5); opacity:0; }
   60% { transform:scale(1.15); }
   100% { transform:scale(1); opacity:1; }
 }
 
-/* NEW: Streak progress (bottom center) */
 #streakProgress {
   position:absolute; bottom:24px; left:50%; transform:translateX(-50%);
-  display:flex; gap:4px; align-items:center;
+  display:flex; gap:6px; align-items:center; background:rgba(0,0,0,0.4); padding:4px 10px; border-radius:12px;
 }
 .streakDot {
-  width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.2);
-  border:1px solid rgba(255,255,255,0.3); transition:background 0.2s, box-shadow 0.2s;
+  width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.2);
+  border:1px solid rgba(255,255,255,0.3); transition:background 0.2s, box-shadow 0.2s, transform 0.2s;
 }
-.streakDot.filled { background:#ffcc44; box-shadow:0 0 6px rgba(255,204,68,0.6); }
+.streakDot.filled { background:#ffcc44; box-shadow:0 0 8px rgba(255,204,68,0.8); transform:scale(1.1); }
 .streakDot.next { border-color:#ffcc44; }
 
-/* =====================================================================
-   NEW: WAVE PROGRESS
-   ===================================================================== */
 #waveProgressWrap {
   position:absolute; top:18px; left:26px;
   display:flex; flex-direction:column; gap:4px;
 }
-#waveLabel { font-size:11px; color:#b9d9e8; letter-spacing:1px; text-shadow:0 0 4px #000; }
-#waveBarBg { width:140px; height:6px; background:rgba(0,0,0,0.5); border-radius:3px; overflow:hidden; }
+#waveLabel { font-family:'Orbitron', sans-serif; font-size:11px; font-weight:700; color:#b9d9e8; letter-spacing:1px; text-shadow:0 0 4px #000; }
+#waveBarBg { width:150px; height:6px; background:rgba(4,10,20,0.7); border-radius:3px; overflow:hidden; border:1px solid rgba(79,216,255,0.2); }
 #waveBarFill { height:100%; width:0%; background:linear-gradient(90deg,#4fd8ff,#2a6bff); transition:width 0.3s; }
+
 #waveCountdown {
   position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-  font-size:48px; font-weight:900; color:#4fd8ff;
-  text-shadow:0 0 24px rgba(79,216,255,0.8);
-  opacity:0; transition:opacity 0.3s;
-  pointer-events:none;
+  font-family:'Orbitron', sans-serif; font-size:64px; font-weight:900; color:#4fd8ff;
+  text-shadow:0 0 32px rgba(79,216,255,0.9); opacity:0; transition:opacity 0.3s; pointer-events:none;
 }
 #waveCountdown.show { opacity:1; }
 #waveBossLabel {
-  position:absolute; top:42%; left:50%; transform:translate(-50%,-50%);
-  font-size:14px; font-weight:800; letter-spacing:3px; color:#ff3838;
-  text-shadow:0 0 12px rgba(255,56,56,0.6);
-  opacity:0; transition:opacity 0.3s;
+  position:absolute; top:40%; left:50%; transform:translate(-50%,-50%);
+  font-family:'Orbitron', sans-serif; font-size:16px; font-weight:900; letter-spacing:3px; color:#ff3838;
+  text-shadow:0 0 16px rgba(255,56,56,0.8); opacity:0; transition:opacity 0.3s;
 }
 #waveBossLabel.show { opacity:1; }
 
-/* =====================================================================
-   NEW: DAMAGE DIRECTION INDICATORS
-   ===================================================================== */
 #damageDirContainer {
-  position:fixed; top:50%; left:50%; width:0; height:0;
-  pointer-events:none; z-index:9;
+  position:fixed; top:50%; left:50%; width:0; height:0; pointer-events:none; z-index:9;
 }
 .damageDir {
-  position:absolute; width:50px; height:6px;
-  background:linear-gradient(90deg, rgba(255,0,0,0.8), rgba(255,0,0,0));
-  border-radius:3px;
-  transform-origin:left center;
-  opacity:0; transition:opacity 0.5s;
-  pointer-events:none;
+  position:absolute; width:60px; height:8px;
+  background:linear-gradient(90deg, rgba(255,0,0,0.9), rgba(255,0,0,0));
+  border-radius:4px; transform-origin:left center; opacity:0; transition:opacity 0.5s; pointer-events:none;
+  filter:drop-shadow(0 0 6px #ff0000);
 }
 .damageDir.show { opacity:1; }
 
-/* =====================================================================
-   NEW: SNIPER SCOPE OVERLAY
-   ===================================================================== */
 #sniperScope {
-  position:fixed; inset:0; pointer-events:none; z-index:7;
-  opacity:0; transition:opacity 0.2s;
+  position:fixed; inset:0; pointer-events:none; z-index:7; opacity:0; transition:opacity 0.15s;
 }
 #sniperScope.show { opacity:1; }
 #sniperScope::before {
   content:''; position:absolute; inset:0;
-  background:radial-gradient(circle at center, transparent 18%, rgba(0,0,0,0.92) 42%);
+  background:radial-gradient(circle at center, transparent 20%, rgba(0,0,0,0.95) 45%);
 }
-#sniperScope .crossV, #sniperScope .crossH {
-  position:absolute; background:rgba(0,0,0,0.6);
-}
-#sniperScope .crossV { left:50%; top:0; width:1px; height:100%; transform:translateX(-50%); }
-#sniperScope .crossH { top:50%; left:0; height:1px; width:100%; transform:translateY(-50%); }
+#sniperScope .crossV, #sniperScope .crossH { position:absolute; background:rgba(0,0,0,0.7); }
+#sniperScope .crossV { left:50%; top:0; width:1.5px; height:100%; transform:translateX(-50%); }
+#sniperScope .crossH { top:50%; left:0; height:1.5px; width:100%; transform:translateY(-50%); }
 #sniperScope .milDot {
-  position:absolute; width:4px; height:4px; border-radius:50%; background:rgba(255,0,0,0.7);
-  top:50%; left:50%; transform:translate(-50%,-50%);
+  position:absolute; width:5px; height:5px; border-radius:50%; background:rgba(255,0,0,0.85);
+  top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 6px #ff0000;
 }
 
-/* =====================================================================
-   NEW: XP & LEVEL
-   ===================================================================== */
 #xpWrap {
   position:absolute; top:18px; left:50%; transform:translateX(-50%);
-  display:flex; flex-direction:column; align-items:center; gap:2px;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
 }
 #levelBadge {
-  font-size:11px; font-weight:800; color:#ffcc44; letter-spacing:1px;
-  text-shadow:0 0 6px rgba(255,204,68,0.5);
-  background:rgba(0,0,0,0.4); padding:2px 10px; border-radius:10px;
-  border:1px solid rgba(255,204,68,0.3);
+  font-family:'Orbitron', sans-serif; font-size:11px; font-weight:800; color:#ffcc44; letter-spacing:1px;
+  text-shadow:0 0 6px rgba(255,204,68,0.6); background:rgba(4,10,20,0.7); padding:3px 12px; border-radius:12px;
+  border:1px solid rgba(255,204,68,0.4); backdrop-filter:blur(4px);
 }
-#xpBarBg { width:120px; height:4px; background:rgba(0,0,0,0.4); border-radius:2px; overflow:hidden; }
+#xpBarBg { width:130px; height:4px; background:rgba(0,0,0,0.5); border-radius:2px; overflow:hidden; }
 #xpBarFill { height:100%; width:0%; background:#ffcc44; transition:width 0.3s; }
 #xpGainFloat {
   position:fixed; top:50%; left:50%; transform:translate(-50%,-80px);
-  font-size:16px; font-weight:800; color:#ffcc44;
-  text-shadow:0 0 8px rgba(255,204,68,0.6);
-  opacity:0; transition:opacity 0.3s, transform 0.5s;
+  font-family:'Orbitron', sans-serif; font-size:18px; font-weight:900; color:#ffcc44;
+  text-shadow:0 0 10px rgba(255,204,68,0.8); opacity:0; transition:opacity 0.3s, transform 0.5s;
   pointer-events:none; z-index:11;
 }
-#xpGainFloat.show { opacity:1; transform:translate(-50%,-110px); }
+#xpGainFloat.show { opacity:1; transform:translate(-50%,-120px); }
 
-/* =====================================================================
-   NEW: CROUCH INDICATOR
-   ===================================================================== */
 #crouchIndicator {
   position:absolute; bottom:90px; left:26px;
-  font-size:11px; font-weight:700; color:#ffe680; letter-spacing:1px;
-  text-shadow:0 0 4px #000;
-  opacity:0; transition:opacity 0.15s;
+  font-family:'Orbitron', sans-serif; font-size:11px; font-weight:800; color:#ffe680; letter-spacing:1.5px;
+  text-shadow:0 0 6px #000; opacity:0; transition:opacity 0.15s; background:rgba(0,0,0,0.5); padding:2px 8px; border-radius:4px;
 }
 #crouchIndicator.show { opacity:1; }
 
 /* =====================================================================
-   OVERLAY / MENUS
+   AAA MENU SYSTEM — OVERLAY, TABS, MODALS, PAUSE MENU
    ===================================================================== */
 #overlay {
-  position:fixed; inset:0; display:flex; flex-direction:column; justify-content:center; align-items:center;
-  background:rgba(3,5,15,0.92); color:#eaf2ff; text-align:center; z-index:20; gap:16px;
+  position:fixed; inset:0; display:flex; flex-direction:column;
+  background:radial-gradient(ellipse at center, rgba(8,16,32,0.85) 0%, rgba(3,5,15,0.97) 100%);
+  color:#eaf2ff; z-index:20; overflow-y:auto; transition:opacity 0.2s ease, visibility 0.2s ease;
 }
-#overlay h1 { font-size:44px; letter-spacing:3px; color:#4fd8ff; text-shadow:0 0 24px rgba(79,216,255,0.8); }
-#overlay p { font-size:14px; color:#9fb3d9; max-width:480px; line-height:1.7; }
-#overlay .keys { display:grid; grid-template-columns:auto auto; gap:6px 18px; text-align:left; font-size:13px; color:#cdd9f0; margin-top:6px; }
-#overlay .keys b { color:#4fd8ff; }
-#overlay button {
-  margin-top:10px; padding:14px 40px; font-size:18px; font-weight:800; border:none; border-radius:30px;
-  background:linear-gradient(135deg,#4fd8ff,#2a6bff); color:#05060f; cursor:pointer;
-  box-shadow:0 0 24px rgba(79,216,255,0.6); letter-spacing:1px;
+#overlay.hidden {
+  opacity:0 !important; visibility:hidden !important; pointer-events:none !important; display:none !important;
 }
-#overlay button:hover { filter:brightness(1.1); }
-#overlay button.secondary { background:transparent; color:#bcd2e8; border:1px solid rgba(79,216,255,.5); box-shadow:none; }
 
-.menuPanel { width:min(760px,92vw); padding:32px; border:1px solid rgba(79,216,255,.3); border-radius:14px; background:linear-gradient(135deg,rgba(10,22,42,.98),rgba(3,5,15,.95)); box-shadow:0 24px 80px rgba(0,0,0,.55); }
-.menuPanel h2 { color:#4fd8ff; letter-spacing:2px; margin-bottom:10px; }
-.menuGrid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:22px 0; }
-.mapCard, .storeCard { padding:18px; min-height:110px; border:1px solid rgba(255,255,255,.12); border-radius:12px; text-align:left; background:rgba(255,255,255,.05); cursor:pointer; transition:transform .18s, border-color .18s, background .18s; }
-.mapCard:hover, .storeCard:hover { transform:translateY(-2px); border-color:rgba(79,216,255,.45); background:rgba(255,255,255,.08); }
-.mapCard.selected { border-color:#4fd8ff; box-shadow:inset 0 0 20px rgba(79,216,255,.15); }
-.mapCard b, .storeCard b { display:block; color:#eaf2ff; margin-bottom:8px; }
-.mapCard small, .storeCard small { color:#9fb3d9; line-height:1.35; }
-.storeCard button { margin-top:12px; background:#4fd8ff; border:none; color:#05060f; padding:10px 12px; border-radius:8px; cursor:pointer; font-weight:700; transition:transform .15s, filter .15s; }
-.storeCard button:hover { transform:translateY(-1px); filter:brightness(1.05); }
-.storeCard button:disabled { opacity:.45; cursor:default; }
-.menuActions { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:14px; }
-.credits { color:#ffcc44; font-weight:800; }
+/* Header bar do menu principal estilo COD Warzone */
+.menuHeader {
+  width:100%; padding:20px 40px; display:flex; justify-content:space-between; align-items:center;
+  background:linear-gradient(180deg, rgba(4,10,24,0.95) 0%, rgba(4,10,24,0) 100%);
+  border-bottom:1px solid rgba(79,216,255,0.2); backdrop-filter:blur(10px);
+}
+.menuBrand { display:flex; align-items:center; gap:14px; }
+.menuBrand h1 {
+  font-family:'Orbitron', sans-serif; font-size:28px; font-weight:900; letter-spacing:4px;
+  color:#4fd8ff; text-shadow:0 0 20px rgba(79,216,255,0.8); margin:0;
+}
+.menuBrand .sub { font-size:12px; font-weight:700; color:#9fb3d9; letter-spacing:2px; text-transform:uppercase; }
 
-/* --- Confirm Modal --- */
-#confirmModal { position:fixed; inset:0; display:flex; justify-content:center; align-items:center; background:rgba(0,0,0,0.65); z-index:30; opacity:0; pointer-events:none; transition:opacity .2s; }
+/* Navegação por Abas */
+.menuTabs { display:flex; gap:10px; }
+.tabBtn {
+  font-family:'Orbitron', sans-serif; font-size:13px; font-weight:800; letter-spacing:2px;
+  padding:10px 22px; border:none; background:rgba(255,255,255,0.04); color:#9fb3d9;
+  border-radius:6px; cursor:pointer; transition:all 0.2s ease; border:1px solid rgba(255,255,255,0.08);
+}
+.tabBtn:hover { background:rgba(79,216,255,0.15); color:#ffffff; border-color:rgba(79,216,255,0.4); transform:translateY(-1px); }
+.tabBtn.active { background:linear-gradient(135deg, rgba(79,216,255,0.25), rgba(42,107,255,0.35)); color:#4fd8ff; border-color:#4fd8ff; box-shadow:0 0 16px rgba(79,216,255,0.3); }
+
+/* Conteúdo principal do menu */
+.menuMainContent {
+  flex:1; display:flex; justify-content:center; align-items:center; padding:30px;
+}
+
+.menuPanelAAA {
+  width:min(940px,94vw); padding:36px; border:1px solid rgba(79,216,255,0.35); border-radius:16px;
+  background:linear-gradient(135deg, rgba(8,18,36,0.92), rgba(3,6,16,0.95));
+  box-shadow:0 32px 90px rgba(0,0,0,0.85), inset 0 0 40px rgba(79,216,255,0.05);
+  backdrop-filter:blur(16px); animation: panelFade 0.3s ease-out;
+}
+@keyframes panelFade { from { opacity:0; transform:scale(0.98); } to { opacity:1; transform:scale(1); } }
+
+.menuPanelAAA h2 {
+  font-family:'Orbitron', sans-serif; font-size:22px; font-weight:900; color:#4fd8ff;
+  letter-spacing:3px; margin-bottom:12px; text-shadow:0 0 12px rgba(79,216,255,0.5);
+}
+
+.menuPanelAAA p.desc { font-size:15px; font-weight:600; color:#b9d9e8; line-height:1.6; margin-bottom:24px; }
+
+/* Grid de Operações / Mapas */
+.menuGridAAA { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:20px 0; }
+
+.mapCardAAA, .storeCardAAA {
+  padding:22px; border:1px solid rgba(255,255,255,0.12); border-radius:12px;
+  text-align:left; background:rgba(255,255,255,0.03); cursor:pointer;
+  transition:all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); position:relative; overflow:hidden;
+}
+.mapCardAAA::before, .storeCardAAA::before {
+  content:''; position:absolute; top:0; left:0; width:4px; height:100%; background:transparent; transition:background 0.2s;
+}
+.mapCardAAA:hover, .storeCardAAA:hover {
+  transform:translateY(-4px); border-color:rgba(79,216,255,0.5); background:rgba(79,216,255,0.06);
+  box-shadow:0 12px 30px rgba(0,0,0,0.5);
+}
+.mapCardAAA.selected { border-color:#4fd8ff; background:rgba(79,216,255,0.12); box-shadow:0 0 24px rgba(79,216,255,0.25); }
+.mapCardAAA.selected::before, .storeCardAAA.owned::before { background:#4fd8ff; }
+
+.mapCardAAA b, .storeCardAAA b { display:block; font-family:'Orbitron', sans-serif; font-size:15px; color:#eaf2ff; margin-bottom:8px; }
+.mapCardAAA small, .storeCardAAA small { font-size:13px; font-weight:600; color:#9fb3d9; line-height:1.4; }
+
+.btnAAA {
+  font-family:'Orbitron', sans-serif; font-size:14px; font-weight:900; letter-spacing:2px;
+  padding:12px 32px; border:none; border-radius:30px; cursor:pointer; transition:all 0.2s ease;
+  background:linear-gradient(135deg,#4fd8ff,#2a6bff); color:#04070d;
+  box-shadow:0 0 24px rgba(79,216,255,0.5); display:inline-flex; align-items:center; justify-content:center; gap:8px;
+}
+.btnAAA:hover { filter:brightness(1.15); transform:translateY(-2px); box-shadow:0 0 32px rgba(79,216,255,0.8); }
+.btnAAA.secondary {
+  background:transparent; color:#cdd9f0; border:1px solid rgba(79,216,255,0.4); box-shadow:none;
+}
+.btnAAA.secondary:hover { background:rgba(79,216,255,0.12); border-color:#4fd8ff; color:#fff; }
+.btnAAA.danger {
+  background:linear-gradient(135deg,#ff3838,#d71920); color:#fff; box-shadow:0 0 20px rgba(255,56,56,0.5);
+}
+.btnAAA.danger:hover { filter:brightness(1.15); box-shadow:0 0 28px rgba(255,56,56,0.8); }
+
+/* Configurações Controls */
+.settingsGroup { display:flex; flex-direction:column; gap:16px; max-width:580px; margin:0 auto; }
+.settingRow { display:flex; justify-content:space-between; align-items:center; padding:12px 18px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; }
+.settingRow label { font-family:'Orbitron', sans-serif; font-size:12px; font-weight:700; color:#eaf2ff; }
+.settingControl { display:flex; align-items:center; gap:14px; }
+.settingControl input[type="range"] {
+  width:160px; accent-color:#4fd8ff; cursor:pointer;
+}
+.settingControl .valLabel { font-family:'Orbitron', sans-serif; font-size:13px; font-weight:800; color:#4fd8ff; min-width:44px; text-align:right; }
+
+/* =====================================================================
+   MENU DE PAUSA IN-GAME (EXCLUSIVO DE PARTIDA)
+   ===================================================================== */
+#pauseMenu {
+  position:fixed; inset:0; display:flex; justify-content:center; align-items:center;
+  background:rgba(2,5,12,0.92); backdrop-filter:blur(14px); z-index:25; opacity:0; pointer-events:none; transition:opacity 0.2s ease;
+}
+#pauseMenu.show { opacity:1; pointer-events:auto; }
+
+.pauseContainer {
+  width:min(900px,94vw); padding:32px; background:linear-gradient(135deg, rgba(8,18,36,0.98), rgba(3,6,16,0.98));
+  border:1px solid rgba(79,216,255,0.45); border-radius:18px; box-shadow:0 32px 100px rgba(0,0,0,0.9);
+  display:flex; flex-direction:column; gap:24px;
+}
+
+.pauseHeader {
+  display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(79,216,255,0.25);
+  padding-bottom:16px;
+}
+.pauseHeader h2 {
+  font-family:'Orbitron', sans-serif; font-size:24px; font-weight:900; letter-spacing:3px; color:#4fd8ff; margin:0;
+  text-shadow:0 0 16px rgba(79,216,255,0.6);
+}
+.pauseHeader .zoneBadge {
+  font-family:'Orbitron', sans-serif; font-size:12px; font-weight:800; color:#ffcc44;
+  background:rgba(255,204,68,0.12); border:1px solid rgba(255,204,68,0.4); padding:6px 14px; border-radius:20px;
+}
+
+.pauseBody {
+  display:grid; grid-template-columns:1.2fr 1fr; gap:24px; text-align:left;
+}
+
+.pauseSectionTitle {
+  font-family:'Orbitron', sans-serif; font-size:13px; font-weight:800; color:#4fd8ff; letter-spacing:1.5px;
+  margin-bottom:12px; border-left:3px solid #4fd8ff; padding-left:10px;
+}
+
+.pauseStatsGrid {
+  display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:18px;
+}
+.pauseStatBox {
+  background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:10px 14px; border-radius:8px;
+}
+.pauseStatBox label { font-size:11px; font-weight:700; color:#9fb3d9; text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:2px; }
+.pauseStatBox val { font-family:'Orbitron', sans-serif; font-size:16px; font-weight:900; color:#eaf2ff; }
+
+.pauseActions { display:flex; flex-direction:column; gap:10px; }
+
+/* Confirm Modal */
+#confirmModal { position:fixed; inset:0; display:flex; justify-content:center; align-items:center; background:rgba(0,0,0,0.8); z-index:30; opacity:0; pointer-events:none; transition:opacity .2s; backdrop-filter:blur(8px); }
 #confirmModal.show { opacity:1; pointer-events:auto; }
-#confirmPanel { width:min(520px,90vw); padding:26px; background:rgba(6,14,28,.97); border:1px solid rgba(79,216,255,.4); border-radius:16px; box-shadow:0 24px 60px rgba(0,0,0,.6); text-align:center; }
-#confirmPanel h3 { font-size:24px; margin-bottom:10px; color:#4fd8ff; }
-#confirmPanel p { margin-bottom:22px; color:#dbe9ff; line-height:1.6; }
-#confirmPanel .confirmActions { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; }
-#confirmPanel .confirmActions button { min-width:120px; padding:12px 18px; border-radius:10px; font-weight:700; }
-#confirmPanel .confirmActions button.primary { background:#4fd8ff; border:none; color:#05060f; }
-#confirmPanel .confirmActions button.secondary { background:transparent; border:1px solid rgba(255,255,255,.25); color:#cdd9f0; }
+#confirmPanel { width:min(500px,90vw); padding:28px; background:rgba(6,14,28,0.98); border:1px solid rgba(79,216,255,.45); border-radius:16px; box-shadow:0 24px 60px rgba(0,0,0,.7); text-align:center; }
+#confirmPanel h3 { font-family:'Orbitron', sans-serif; font-size:22px; margin-bottom:12px; color:#4fd8ff; letter-spacing:2px; }
+#confirmPanel p { margin-bottom:24px; color:#dbe9ff; line-height:1.6; font-size:14px; font-weight:600; }
+#confirmPanel .confirmActions { display:flex; justify-content:center; gap:14px; flex-wrap:wrap; }
 
-/* --- Loading Bar --- */
-#loadingBar { width:320px; height:8px; background:rgba(255,255,255,0.15); border-radius:4px; overflow:hidden; margin-top:10px; }
-#loadingFill { width:0%; height:100%; background:#4fd8ff; transition:width 0.2s; }
-
-/* --- Stats panel in game over --- */
-.statsGrid {
-  display:grid; grid-template-columns:repeat(2,1fr); gap:8px 24px;
-  text-align:left; font-size:13px; margin:16px 0;
-}
-.statsGrid .stat-label { color:#9fb3d9; }
-.statsGrid .stat-value { color:#4fd8ff; font-weight:800; text-align:right; }
-
-/* =====================================================================
-   UTILITIES
-   ===================================================================== */
-.hidden { display:none !important; }
-
-/* =====================================================================
-   RESPONSIVE
-   ===================================================================== */
-@media (max-width:600px) {
-  #minimapWrap { width:110px; height:110px; top:12px; right:12px; }
-  #minimap { width:110px; height:110px; }
-  #topBar { justify-content:flex-start; left:14px; gap:14px; font-size:12px; }
-  #bottomLeft { bottom:16px; left:16px; }
-  #bottomRight { bottom:16px; right:16px; }
-  #healthBarBg, #armorBarBg, #staminaBarBg { width:145px; }
-  #ammoText { font-size:30px; }
-  .menuPanel { padding:20px; }
-  .menuGrid { grid-template-columns:1fr; margin:14px 0; }
-  #overlay h1 { font-size:31px; }
+/* Responsivo */
+@media (max-width:768px) {
+  .menuHeader { padding:14px 20px; flex-direction:column; gap:12px; }
+  .menuGridAAA { grid-template-columns:1fr; }
+  .menuPanelAAA { padding:20px; }
+  .tabBtn { padding:8px 14px; font-size:11px; }
+  .pauseBody { grid-template-columns:1fr; }
 }

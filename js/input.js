@@ -1,10 +1,27 @@
 // =====================================================================
-// INPUT.JS — Controles do Jogador
+// INPUT.JS — Controles do Jogador com Suporte a Sensibilidade & Pause
 // =====================================================================
 
 window.addEventListener('keydown', e => {
   keys[e.code] = true;
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+
+  // Se o jogo está pausado, ignorar controles de jogo
+  if (isPaused) {
+    if (e.code === 'Escape') togglePauseMenu();
+    return;
+  }
+
+  // Tecla ESC abre o Menu de Pausa in-game se a partida estiver rolando
+  if (e.code === 'Escape') {
+    if (gameRunning) {
+      togglePauseMenu();
+      return;
+    }
+  }
+
+  // Se o jogo não está rodando ou jogador morto, ignorar ações
+  if (!gameRunning || !player.alive) return;
 
   // Armas
   if (e.code === 'Digit1') switchWeapon(0);
@@ -34,17 +51,6 @@ window.addEventListener('keydown', e => {
   } else if (e.code === 'Space' && inPlane && planeJumpReady) {
     jumpFromPlane();
   }
-
-  // Escape
-  if (e.code === 'Escape' && gameRunning) {
-    document.exitPointerLock();
-    gameRunning = false;
-    dropActive = false;
-    inPlane = false;
-    transportPlane.visible = false;
-    setWind(false);
-    showMainMenu();
-  }
 });
 
 window.addEventListener('keyup', e => {
@@ -52,7 +58,7 @@ window.addEventListener('keyup', e => {
 });
 
 canvas.addEventListener('click', () => {
-  if (!pointerLocked && gameRunning) canvas.requestPointerLock();
+  if (!pointerLocked && gameRunning && !isPaused) canvas.requestPointerLock();
 });
 
 document.addEventListener('pointerlockchange', () => {
@@ -60,16 +66,17 @@ document.addEventListener('pointerlockchange', () => {
 });
 
 document.addEventListener('mousemove', e => {
-  if (!pointerLocked) return;
-  yaw -= e.movementX * 0.0022;
-  pitch -= e.movementY * 0.0022;
+  if (!pointerLocked || isPaused) return;
+  const sens = settings.sensitivity || 0.0022;
+  yaw -= e.movementX * sens;
+  pitch -= e.movementY * sens;
   pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
   yawObject.rotation.y = yaw;
   pitchObject.rotation.x = pitch;
 });
 
 document.addEventListener('mousedown', e => {
-  if (e.button !== 0 || !pointerLocked || !player.alive) return;
+  if (e.button !== 0 || !pointerLocked || !player.alive || isPaused) return;
   unlockAudio();
   mouseDown = true;
   if (!currentWeapon().auto) doShoot();

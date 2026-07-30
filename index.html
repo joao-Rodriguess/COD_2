@@ -25,7 +25,7 @@
 <!-- Indicador flutuante de XP -->
 <div id="xpGainFloat">+50 XP</div>
 
-<!-- HUD -->
+<!-- HUD IN-GAME -->
 <div id="hud">
   <div id="topBar">
     <div>ELIMINAÇÕES <span class="val" id="killCount">0</span></div>
@@ -91,39 +91,25 @@
   </div>
 </div>
 
-<!-- Overlay Menu Inicial / Game Over / Briefing / Arsenal -->
-<div id="overlay">
-  <h1>OPERAÇÃO WARZONE</h1>
-  <p>Você foi lançado em um mapa aberto hostil. Elimine os inimigos antes que eles te eliminem. Cuidado com sua munição e sua vida.</p>
-  <div class="keys">
-    <div><b>WASD</b></div><div>Mover</div>
-    <div><b>MOUSE</b></div><div>Mirar</div>
-    <div><b>CLIQUE ESQ.</b></div><div>Atirar</div>
-    <div><b>R</b></div><div>Recarregar</div>
-    <div><b>SHIFT</b></div><div>Correr</div>
-    <div><b>C</b></div><div>Dash tático</div>
-    <div><b>CTRL</b></div><div>Agachar</div>
-    <div><b>G</b></div><div>Granada</div>
-    <div><b>ESPAÇO</b></div><div>Pular</div>
-    <div><b>1–5</b></div><div>Trocar arma</div>
-  </div>
-  <div id="loadingBar" class="hidden"><div id="loadingFill"></div></div>
-  <button id="startBtn">ENTRAR NO COMBATE</button>
-</div>
+<!-- AAA OVERLAY MENU PRINCIPAL -->
+<div id="overlay"></div>
 
-<!-- Modal de Confirmação para Sair -->
+<!-- MENU DE PAUSA DE COMBATE EXCLUSIVO (ESC) -->
+<div id="pauseMenu"></div>
+
+<!-- MODAL DE CONFIRMAÇÃO PARA SAIR -->
 <div id="confirmModal" class="hidden">
   <div id="confirmPanel">
-    <h3>SAIR DO JOGO?</h3>
-    <p>Deseja retornar ao menu principal? Seu progresso de nível e créditos salvos serão mantidos.</p>
+    <h3>RETORNAR AO MENU?</h3>
+    <p>Deseja sair da operação e retornar ao menu principal? Seu nível e créditos acumulados continuam salvos.</p>
     <div class="confirmActions">
-      <button class="secondary" id="confirmNo">NÃO</button>
-      <button class="primary" id="confirmYes">SIM, SAIR</button>
+      <button class="btnAAA secondary" id="confirmNo">CONTINUAR JOGANDO</button>
+      <button class="btnAAA danger" id="confirmYes">SIM, VOLTAR AO MENU</button>
     </div>
   </div>
 </div>
 
-<!-- Scripts -->
+<!-- SCRIPTS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/globals.js"></script>
 <script src="js/audio.js"></script>

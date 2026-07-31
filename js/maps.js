@@ -51,100 +51,240 @@ function createSkyTexture(mapKey) {
   const ctx = canvas.getContext('2d');
 
   if (mapKey === 'arctic') {
-    // Céu Noturno Polar com Aurora Boreal Verde/Ciano
+    // --- CÉU ÁRTICO REALISTA ---
     const grad = ctx.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0, '#020b14');
-    grad.addColorStop(0.35, '#071f2c');
-    grad.addColorStop(0.7, '#004438');
+    grad.addColorStop(0, '#01050f');
+    grad.addColorStop(0.4, '#030f24');
+    grad.addColorStop(0.7, '#071b36');
     grad.addColorStop(1.0, '#0c2238');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1024, 512);
 
-    // Ondas da Aurora Boreal
-    for (let wave = 0; wave < 3; wave++) {
-      ctx.beginPath();
-      ctx.moveTo(0, 180 + wave * 40);
-      for (let x = 0; x <= 1024; x += 30) {
-        const y = 180 + wave * 40 + Math.sin(x * 0.01 + wave) * 45 + Math.cos(x * 0.02) * 20;
-        ctx.lineTo(x, y);
-      }
-      ctx.lineTo(1024, 512); ctx.lineTo(0, 512);
-      const aurGrad = ctx.createLinearGradient(0, 140, 0, 360);
-      aurGrad.addColorStop(0, 'rgba(0, 255, 180, 0.45)');
-      aurGrad.addColorStop(0.5, 'rgba(0, 200, 255, 0.25)');
-      aurGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = aurGrad;
-      ctx.fill();
-    }
-
-    // Estrelas piscantes
+    // Estrelas realistas
     ctx.fillStyle = '#ffffff';
-    for (let s = 0; s < 250; s++) {
+    for (let s = 0; s < 180; s++) {
       const sx = Math.random() * 1024;
-      const sy = Math.random() * 260;
+      const sy = Math.random() * 320;
+      const opacity = 0.2 + Math.random() * 0.8;
+      ctx.globalAlpha = opacity;
       const sr = Math.random() * 1.5;
       ctx.fillRect(sx, sy, sr, sr);
+      if (Math.random() < 0.05) { // Estrela brilhante
+        ctx.beginPath();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 0.5;
+        ctx.moveTo(sx - 3, sy); ctx.lineTo(sx + 3, sy);
+        ctx.moveTo(sx, sy - 3); ctx.lineTo(sx, sy + 3);
+        ctx.stroke();
+      }
     }
+    ctx.globalAlpha = 1.0;
+
+    // Lua Crescente Realista
+    ctx.beginPath();
+    ctx.arc(850, 90, 24, 0, Math.PI * 2);
+    const moonGrad = ctx.createRadialGradient(850, 90, 0, 850, 90, 24);
+    moonGrad.addColorStop(0, 'rgba(255, 255, 230, 1)');
+    moonGrad.addColorStop(0.8, 'rgba(255, 255, 200, 0.9)');
+    moonGrad.addColorStop(1, 'rgba(255, 255, 200, 0)');
+    ctx.fillStyle = moonGrad;
+    ctx.fill();
+
+    // Sombra da lua para criar efeito crescent
+    ctx.beginPath();
+    ctx.arc(840, 85, 24, 0, Math.PI * 2);
+    ctx.fillStyle = '#01050f';
+    ctx.fill();
+
+    // Cortinas da Aurora Boreal Onduladas (Bezier)
+    const auroraColors = ['rgba(0, 255, 140, 0.22)', 'rgba(0, 210, 255, 0.15)', 'rgba(0, 255, 200, 0.18)'];
+    auroraColors.forEach((color, idx) => {
+      ctx.beginPath();
+      const startY = 160 + idx * 30;
+      ctx.moveTo(0, startY);
+      ctx.bezierCurveTo(256, startY - 60, 512, startY + 60, 768, startY - 40);
+      ctx.bezierCurveTo(896, startY - 90, 960, startY, 1024, startY - 20);
+      ctx.lineTo(1024, 400);
+      ctx.lineTo(0, 400);
+      ctx.closePath();
+      const aurGrad = ctx.createLinearGradient(0, startY - 80, 0, 400);
+      aurGrad.addColorStop(0, color);
+      aurGrad.addColorStop(0.3, color.replace('0.22', '0.1').replace('0.15', '0.08').replace('0.18', '0.1'));
+      aurGrad.addColorStop(1.0, 'rgba(0,0,0,0)');
+      ctx.fillStyle = aurGrad;
+      ctx.fill();
+    });
+
   } else if (mapKey === 'void_core') {
-    // Nebulosa Quântica do Abismo (Void Celestial)
+    // --- CÉU CELESTIAL QUÂNTICO REALISTA ---
     const grad = ctx.createLinearGradient(0, 0, 0, 512);
     grad.addColorStop(0, '#04010a');
-    grad.addColorStop(0.4, '#140528');
-    grad.addColorStop(0.8, '#2a0845');
-    grad.addColorStop(1.0, '#140728');
+    grad.addColorStop(0.4, '#100522');
+    grad.addColorStop(0.8, '#24083d');
+    grad.addColorStop(1.0, '#100522');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1024, 512);
 
-    // Manchas de Nebulosa Púrpura/Ciano
-    for (let i = 0; i < 8; i++) {
-      const cx = Math.random() * 1024;
-      const cy = Math.random() * 300;
-      const rad = 100 + Math.random() * 180;
+    // Estrelas do Abismo
+    ctx.fillStyle = '#ffffff';
+    for (let s = 0; s < 250; s++) {
+      const sx = Math.random() * 1024;
+      const sy = Math.random() * 400;
+      ctx.globalAlpha = 0.2 + Math.random() * 0.8;
+      const size = Math.random() * 1.6;
+      ctx.fillRect(sx, sy, size, size);
+    }
+    ctx.globalAlpha = 1.0;
+
+    // Nebulosas Gigantes Coloridas
+    for (let i = 0; i < 5; i++) {
+      const cx = [150, 450, 800, 300, 700][i];
+      const cy = [120, 240, 150, 320, 80][i];
+      const rad = [150, 260, 220, 180, 130][i];
       const nebGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
-      nebGrad.addColorStop(0, i % 2 === 0 ? 'rgba(157, 0, 255, 0.5)' : 'rgba(0, 240, 255, 0.35)');
+      const col = i % 3 === 0 ? 'rgba(157, 0, 255, 0.45)' : i % 3 === 1 ? 'rgba(0, 240, 255, 0.28)' : 'rgba(255, 0, 128, 0.22)';
+      nebGrad.addColorStop(0, col);
+      nebGrad.addColorStop(0.6, col.replace('0.45', '0.15').replace('0.28', '0.08').replace('0.22', '0.06'));
       nebGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = nebGrad;
       ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.fill();
     }
+
+    // Anéis Celestiais Gigantes
+    ctx.save();
+    ctx.translate(512, 256);
+    ctx.rotate(-Math.PI / 8);
+    for (let r = 0; r < 4; r++) {
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 420 + r * 14, 85 + r * 4, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(180, 100, 255, ${0.12 - r * 0.02})`;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+    ctx.restore();
+
   } else if (mapKey === 'neon_rust') {
-    // Skyline Cyberpunk com Prédios Distantes Ilustrados
+    // --- CÉU CYBERPUNK REALISTA ---
     const grad = ctx.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0, '#02050e');
-    grad.addColorStop(0.5, '#0a1224');
+    grad.addColorStop(0, '#010309');
+    grad.addColorStop(0.5, '#050a16');
     grad.addColorStop(1.0, '#0c142b');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1024, 512);
 
-    // Silhuetas de Arranha-céus no horizonte com luzes neon
-    ctx.fillStyle = '#060a14';
-    for (let x = 0; x < 1024; x += 40) {
-      const bh = 100 + Math.sin(x * 0.05) * 60 + Math.random() * 80;
-      const bw = 25 + Math.random() * 20;
-      ctx.fillRect(x, 512 - bh, bw, bh);
+    // Silhuetas de Arranha-céus Cyberpunk (3 Camadas para Profundidade)
+    const layers = [
+      { count: 18, color: '#03050c', heightMult: 1.4, spacing: 58 }, // Fundo
+      { count: 24, color: '#070a14', heightMult: 1.1, spacing: 44 }, // Médio
+      { count: 32, color: '#0c1222', heightMult: 0.85, spacing: 32 }  // Frente
+    ];
 
-      // Janelinhas acesas
-      ctx.fillStyle = Math.random() > 0.5 ? '#00f0ff' : '#9d00ff';
-      for (let wy = 512 - bh + 10; wy < 510; wy += 20) {
-        if (Math.random() > 0.4) ctx.fillRect(x + 5, wy, 4, 6);
+    layers.forEach((layer) => {
+      ctx.fillStyle = layer.color;
+      let curX = 0;
+      for (let i = 0; i < layer.count; i++) {
+        const bw = layer.spacing + Math.random() * 20;
+        const bh = (80 + Math.random() * 110) * layer.heightMult;
+        ctx.fillRect(curX, 512 - bh, bw, bh);
+
+        // Janelas Neon acesas nas silhuetas frontais
+        if (layer.color !== '#03050c' && Math.random() > 0.3) {
+          ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0, 240, 255, 0.65)' : 'rgba(255, 0, 180, 0.65)';
+          for (let wy = 512 - bh + 12; wy < 500; wy += 18) {
+            for (let wx = curX + 4; wx < curX + bw - 6; wx += 10) {
+              if (Math.random() > 0.5) ctx.fillRect(wx, wy, 3, 5);
+            }
+          }
+          ctx.fillStyle = layer.color;
+        }
+
+        // Antenas e torres de transmissão no topo
+        if (Math.random() < 0.25) {
+          ctx.beginPath();
+          ctx.strokeStyle = '#ff2222';
+          ctx.lineWidth = 1;
+          ctx.moveTo(curX + bw / 2, 512 - bh);
+          ctx.lineTo(curX + bw / 2, 512 - bh - 20);
+          ctx.stroke();
+          // Luz vermelha no topo
+          ctx.fillStyle = '#ff3333';
+          ctx.fillRect(curX + bw / 2 - 1.5, 512 - bh - 21.5, 3, 3);
+          ctx.fillStyle = layer.color;
+        }
+
+        curX += bw + (Math.random() * 8);
       }
-      ctx.fillStyle = '#060a14';
+    });
+
+    // Nuvens táticas enevoadas
+    ctx.fillStyle = 'rgba(10, 20, 40, 0.4)';
+    for (let c = 0; c < 5; c++) {
+      ctx.beginPath();
+      ctx.ellipse(Math.random() * 1024, 180 + Math.random() * 80, 180, 35, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
+
   } else if (mapKey === 'jungle_temple') {
-    // Tempestade Tropical com Montanhas Envoadas
+    // --- CÉU TROPICAL REALISTA (GOD RAYS) ---
     const grad = ctx.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0, '#1c2e19');
-    grad.addColorStop(0.5, '#3d5433');
-    grad.addColorStop(1.0, '#2e4226');
+    grad.addColorStop(0, '#1a3322');
+    grad.addColorStop(0.4, '#334c38');
+    grad.addColorStop(0.7, '#4c6652');
+    grad.addColorStop(1.0, '#3a5441');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1024, 512);
+
+    // Grandes nuvens volumosas enevoadas
+    ctx.fillStyle = 'rgba(230, 240, 230, 0.08)';
+    for (let i = 0; i < 15; i++) {
+      const cx = Math.random() * 1024;
+      const cy = 80 + Math.random() * 120;
+      const rx = 100 + Math.random() * 120;
+      const ry = 40 + Math.random() * 50;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Raios de sol realistas (God Rays) projetados do topo direito
+    ctx.fillStyle = 'rgba(255, 245, 200, 0.065)';
+    for (let i = 0; i < 7; i++) {
+      ctx.beginPath();
+      ctx.moveTo(900, 20); // Origem do Sol
+      ctx.lineTo(0 + i * 160, 512);
+      ctx.lineTo(120 + i * 160, 512);
+      ctx.closePath();
+      ctx.fill();
+    }
+
   } else {
-    // Deserto Árido com Sol Incandescente
+    // --- CÉU DO DESERTO REALISTA (PÔR DO SOL COM SOL GIGANTE) ---
     const grad = ctx.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0, '#75461b');
-    grad.addColorStop(0.5, '#d49b56');
-    grad.addColorStop(1.0, '#e6b978');
+    grad.addColorStop(0, '#591605'); // Crimson
+    grad.addColorStop(0.35, '#a63f14'); // Sunset Orange
+    grad.addColorStop(0.65, '#d97d24'); // Gold
+    grad.addColorStop(0.9, '#e6b978'); // Light Sand
+    grad.addColorStop(1.0, '#9e7343'); // Horizon dust
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1024, 512);
+
+    // Sol Gigante e Brilhante no Horizonte
+    ctx.beginPath();
+    ctx.arc(512, 380, 58, 0, Math.PI * 2);
+    const sunGrad = ctx.createRadialGradient(512, 380, 0, 512, 380, 58);
+    sunGrad.addColorStop(0, 'rgba(255, 255, 240, 1.0)');
+    sunGrad.addColorStop(0.4, 'rgba(255, 220, 100, 0.8)');
+    sunGrad.addColorStop(1.0, 'rgba(255, 100, 0, 0)');
+    ctx.fillStyle = sunGrad;
+    ctx.fill();
+
+    // Nuvens horizontais de poeira varridas pelo vento
+    ctx.fillStyle = 'rgba(200, 110, 40, 0.16)';
+    for (let i = 0; i < 8; i++) {
+      ctx.beginPath();
+      ctx.ellipse(Math.random() * 1024, 340 + Math.random() * 60, 240, 20, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -263,6 +403,39 @@ function updateAmbientParticles(dt) {
   });
 }
 
+function updateReflectionMap() {
+  if (typeof cubeCamera === 'undefined' || typeof renderer === 'undefined' || typeof cubeRenderTarget === 'undefined') return;
+
+  // Ocultar malhas reflexivas temporariamente para evitar loops de feedback de textura no WebGL
+  const hiddenObjects = [];
+  scene.traverse(child => {
+    if (child.isMesh && child.material) {
+      const mats = Array.isArray(child.material) ? child.material : [child.material];
+      let isReflective = false;
+      mats.forEach(mat => {
+        if (mat.envMap === cubeRenderTarget.texture) {
+          isReflective = true;
+        }
+      });
+      if (isReflective) {
+        child.visible = false;
+        hiddenObjects.push(child);
+      }
+    }
+  });
+
+  // Atualizar a câmera de reflexão uma única vez a partir do centro da cena
+  cubeCamera.position.set(0, 15, 0);
+  cubeCamera.update(renderer, scene);
+
+  // Restaurar visibilidade
+  hiddenObjects.forEach(obj => obj.visible = true);
+  
+  if (typeof reflectiveMaterials !== 'undefined') {
+    reflectiveMaterials.forEach(m => m.needsUpdate = true);
+  }
+}
+
 function applyMapTheme() {
   const map = MAPS[selectedMap] || MAPS.neon_rust;
   scene.background.setHex(map.sky);
@@ -275,4 +448,5 @@ function applyMapTheme() {
 
   buildMapDecor();
   generateMapStructures(selectedMap);
+  updateReflectionMap();
 }

@@ -37,7 +37,7 @@ window.addEventListener('keydown', (e) => {
 
   // Recarregar (Tecla R)
   if (e.code === 'KeyR' || e.key === 'r' || e.key === 'R') {
-    startReload();
+    tryReload();
   }
 
   // Uso de Kit Médico (Tecla H)

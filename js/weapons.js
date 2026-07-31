@@ -8,14 +8,14 @@ const weaponGroup = new THREE.Group();
 pitchObject.add(weaponGroup);
 
 const WEAPONS = [
-  { key: 'rifle',   name: 'Rifle M4 Phantom',  damage: 28, fireRate: 0.1,  magSize: 30, auto: true,  spread: 0.022, recoil: 0.025,  range: 120, zoomFov: 50 },
-  { key: 'pistol',  name: 'Pistola M9 Tática', damage: 36, fireRate: 0.22, magSize: 15, auto: false, spread: 0.015, recoil: 0.038,  range: 75,  zoomFov: 58 },
-  { key: 'smg',     name: 'SMG Vector Neon',   damage: 19, fireRate: 0.06, magSize: 40, auto: true,  spread: 0.038, recoil: 0.018,  range: 65,  zoomFov: 55 },
-  { key: 'shotgun', name: 'Escopeta Striker',  damage: 18, fireRate: 0.85, magSize: 8,  auto: false, spread: 0.085, recoil: 0.095,  range: 35,  pellets: 8, zoomFov: 62 },
-  { key: 'sniper',  name: 'Sniper Spectre 50', damage: 130,fireRate: 1.4,  magSize: 5,  auto: false, spread: 0.002, recoil: 0.140,  range: 220, zoomFov: 20, scoped: true }
+  { key: 'rifle',   name: 'Rifle M4 Phantom',  damage: 28, fireRate: 0.1,  magSize: 30, auto: true,  spread: 0.022, recoil: 0.025, kick: 0.012, range: 120, zoomFov: 50, muzzleLocal: new THREE.Vector3(0.28, -0.22, -1.03) },
+  { key: 'pistol',  name: 'Pistola M9 Tática', damage: 36, fireRate: 0.22, magSize: 15, auto: false, spread: 0.015, recoil: 0.038, kick: 0.018, range: 75,  zoomFov: 58, muzzleLocal: new THREE.Vector3(0.28, -0.2, -0.65) },
+  { key: 'smg',     name: 'SMG Vector Neon',   damage: 19, fireRate: 0.06, magSize: 40, auto: true,  spread: 0.038, recoil: 0.018, kick: 0.008, range: 65,  zoomFov: 55, muzzleLocal: new THREE.Vector3(0.28, -0.19, -0.61) },
+  { key: 'shotgun', name: 'Escopeta Striker',  damage: 18, fireRate: 0.85, magSize: 8,  auto: false, spread: 0.085, recoil: 0.095, kick: 0.045, range: 35,  pellets: 8, zoomFov: 62, muzzleLocal: new THREE.Vector3(0.28, -0.21, -0.77) },
+  { key: 'sniper',  name: 'Sniper Spectre 50', damage: 130,fireRate: 1.4,  magSize: 5,  auto: false, spread: 0.002, recoil: 0.140, kick: 0.075, range: 220, zoomFov: 20, scoped: true, muzzleLocal: new THREE.Vector3(0.28, -0.22, -1.5) }
 ];
 
-const ammoState = WEAPONS.map(w => ({ ammo: w.magSize, reserve: w.magSize * 4 }));
+const ammoState = WEAPONS.map(w => ({ inMag: w.magSize, reserve: w.magSize * 4 }));
 
 // =====================================================================
 // 1. RIFLE M4 PHANTOM ULTRA-REALISTA

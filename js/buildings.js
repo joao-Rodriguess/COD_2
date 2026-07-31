@@ -23,12 +23,14 @@ function clearMapStructures() {
   centerPositions.length = 0;
   activePortals.length = 0;
   interactiveMetalDoor = null;
+  if (typeof markCollidablesDirty === 'function') markCollidablesDirty();
 }
 
 function registerCollidable(mesh) {
   mesh.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(mesh);
   collidables.push({ mesh, box });
+  if (typeof markCollidablesDirty === 'function') markCollidablesDirty();
   return box;
 }
 
@@ -39,7 +41,7 @@ function syncAllCollidableBoxes() {
   });
 }
 
-// MATERIAIS REALISTAS DE ALTA FIDELIDADE
+// MATERIAIS REALISTAS DE ALTA FIDELIDADE (PBR)
 const MATS = {
   concreteDark:  new THREE.MeshStandardMaterial({ color: 0x141a24, metalness: 0.8, roughness: 0.3, envMap: cubeRenderTarget.texture }),
   concreteLight: new THREE.MeshStandardMaterial({ color: 0x222d3d, metalness: 0.6, roughness: 0.4 }),
@@ -50,7 +52,7 @@ const MATS = {
   neonOrange:    new THREE.MeshBasicMaterial({ color: 0xff6600 }),
   stoneRuins:    new THREE.MeshStandardMaterial({ color: 0x3d473b, roughness: 0.92 }),
   stoneMoss:     new THREE.MeshStandardMaterial({ color: 0x2a3828, roughness: 0.95 }),
-  rockMat:       new THREE.MeshStandardMaterial({ color: 0x4a4e54, roughness: 0.9, bumpScale: 0.2 }),
+  rockMat:       new THREE.MeshStandardMaterial({ color: 0x4a4e54, roughness: 0.9 }),
   woodTribal:    new THREE.MeshStandardMaterial({ color: 0x4a321a, roughness: 0.9 }),
   thatchRoof:    new THREE.MeshStandardMaterial({ color: 0x6e5628, roughness: 1.0 }),
   obsidianVoid:  new THREE.MeshStandardMaterial({ color: 0x0a0414, roughness: 0.2, metalness: 0.8 }),
@@ -100,9 +102,11 @@ function addLootChest(x, z) {
   core.position.set(0, 0.55, 0.44);
   group.add(core);
 
-  const beacon = new THREE.PointLight(0x00f0ff, 1.2, 8);
-  beacon.position.y = 1.1;
-  group.add(beacon);
+  // Brilho emissivo no lugar de PointLight (muito mais leve)
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.8 });
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6), glowMat);
+  glow.position.y = 1.1;
+  group.add(glow);
 
   group.position.set(x, baseY, z);
   mapStructuresGroup.add(group);
@@ -187,9 +191,13 @@ function buildStreetLamp(x, z, colorHex = 0x00f0ff) {
   lampBulb.position.set(1.3, 5.52, 0);
   g.add(lampBulb);
 
-  const light = new THREE.PointLight(colorHex, 2.0, 20);
-  light.position.set(1.3, 5.3, 0);
-  g.add(light);
+  // Brilho emissivo visual no lugar de PointLight pesada
+  const glowBulb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.3, 6, 6),
+    new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.7 })
+  );
+  glowBulb.position.set(1.3, 5.3, 0);
+  g.add(glowBulb);
 
   mapStructuresGroup.add(g);
   registerCollidable(pole);
@@ -359,10 +367,13 @@ function buildWatchtower(x, z, height = 12) {
   g.add(ladder);
   climbPoints.push({ x: x + width / 2 + 0.1, z, targetY: groundY + height + 2 });
 
-  // Holofote Vermelho
-  const beacon = new THREE.PointLight(0xff3838, 2.5, 22);
-  beacon.position.y = height + 2;
-  g.add(beacon);
+  // Holofote Visual (sem PointLight para performance)
+  const beaconGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.4, 6, 6),
+    new THREE.MeshBasicMaterial({ color: 0xff3838, transparent: true, opacity: 0.85 })
+  );
+  beaconGlow.position.y = height + 2;
+  g.add(beaconGlow);
 
   mapStructuresGroup.add(g);
   mapStructuresGroup.updateMatrixWorld(true);
@@ -409,9 +420,12 @@ function buildCyberSkyscraper(x, z, floors = 4, radius = 9.0) {
   helipad.position.y = totalH + 0.2;
   g.add(helipad);
 
-  const roofBeacon = new THREE.PointLight(0x00f0ff, 2.5, 25);
-  roofBeacon.position.y = totalH + 2.5;
-  g.add(roofBeacon);
+  const roofGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.5, 6, 6),
+    new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.8 })
+  );
+  roofGlow.position.y = totalH + 2.5;
+  g.add(roofGlow);
 
   mapStructuresGroup.add(g);
   mapStructuresGroup.updateMatrixWorld(true);

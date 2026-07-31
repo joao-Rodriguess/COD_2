@@ -2,21 +2,84 @@
 // SHOOTING.JS — Tiro, Recarga, Granadas & AIR DROP TÁTICO
 // =====================================================================
 
+// Muzzle Flash Sprite
+const flashCanvas = document.createElement('canvas');
+flashCanvas.width = 64;
+flashCanvas.height = 64;
+const flashCtx = flashCanvas.getContext('2d');
+const grad = flashCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+grad.addColorStop(0, 'rgba(255, 255, 200, 1)');
+grad.addColorStop(0.3, 'rgba(255, 180, 50, 0.8)');
+grad.addColorStop(1, 'rgba(255, 50, 0, 0)');
+flashCtx.fillStyle = grad;
+flashCtx.fillRect(0, 0, 64, 64);
+
+const flashTex = new THREE.CanvasTexture(flashCanvas);
+const flashSpriteMat = new THREE.SpriteMaterial({
+  map: flashTex,
+  blending: THREE.AdditiveBlending,
+  transparent: true
+});
+const flashSprite = new THREE.Sprite(flashSpriteMat);
+flashSprite.scale.set(0.6, 0.6, 0.6);
+flashSprite.visible = false;
+weaponGroup.add(flashSprite);
+
 function worldMuzzlePosition(w) {
-  return w.muzzleLocal.clone().applyMatrix4(camera.matrixWorld);
+  const localPos = w.muzzleLocal || new THREE.Vector3(0.28, -0.22, -1.0);
+  return localPos.clone().applyMatrix4(camera.matrixWorld);
+}
+
+// =====================================================================
+// OBJECT POOLS — Reutilização de objetos para performance máxima
+// =====================================================================
+
+// --- Pool de Tracers ---
+const TRACER_POOL_SIZE = 20;
+const _tracerMat = new THREE.LineBasicMaterial({ color: 0xfff4c2, transparent: true, opacity: 0.9 });
+const _tracerPool = [];
+for (let i = 0; i < TRACER_POOL_SIZE; i++) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+  const line = new THREE.Line(geo, _tracerMat);
+  line.visible = false;
+  line.frustumCulled = false;
+  scene.add(line);
+  _tracerPool.push({ line, active: false, life: 0 });
 }
 
 function spawnTracer(origin, dir, dist) {
+  let slot = _tracerPool.find(t => !t.active);
+  if (!slot) {
+    // Recicla o mais antigo
+    let oldest = _tracerPool[0];
+    for (const t of _tracerPool) { if (t.life < oldest.life) oldest = t; }
+    slot = oldest;
+  }
   const end = origin.clone().add(dir.clone().multiplyScalar(dist));
-  const geo = new THREE.BufferGeometry().setFromPoints([origin, end]);
-  const mat = new THREE.LineBasicMaterial({ color: 0xfff4c2, transparent: true, opacity: 0.9 });
-  const line = new THREE.Line(geo, mat);
-  scene.add(line);
-  tracers.push({ line, life: 0.06 });
+  const posAttr = slot.line.geometry.attributes.position;
+  posAttr.array[0] = origin.x; posAttr.array[1] = origin.y; posAttr.array[2] = origin.z;
+  posAttr.array[3] = end.x;    posAttr.array[4] = end.y;    posAttr.array[5] = end.z;
+  posAttr.needsUpdate = true;
+  slot.line.geometry.computeBoundingSphere();
+  slot.line.visible = true;
+  slot.active = true;
+  slot.life = 0.06;
+  tracers.push(slot);
 }
 
+// --- Pool de Partículas de Impacto ---
+const MAX_HIT_EFFECTS = 30;
+
 function spawnHitBurst(pos, color) {
-  const count = 10;
+  // Limita efeitos simultâneos
+  if (hitEffects.length >= MAX_HIT_EFFECTS) {
+    const old = hitEffects.shift();
+    scene.remove(old.pts);
+    if (old.pts.geometry) old.pts.geometry.dispose();
+    if (old.pts.material) old.pts.material.dispose();
+  }
+  const count = 8;
   const positions = new Float32Array(count * 3);
   const velocities = [];
   for (let i = 0; i < count; i++) {
@@ -33,15 +96,40 @@ function spawnHitBurst(pos, color) {
   hitEffects.push({ pts, velocities, life: 0.5, maxLife: 0.5 });
 }
 
-// --- Cartucho Ejetado ---
-function spawnShellCasing() {
-  const shellGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.04, 6);
-  const shellMat = new THREE.MeshStandardMaterial({ color: 0xd4a836, metalness: 0.8, roughness: 0.3 });
-  const shell = new THREE.Mesh(shellGeo, shellMat);
-  const muzzle = worldMuzzlePosition(currentWeapon());
-  shell.position.copy(muzzle);
-  shell.position.x += (Math.random() - 0.5) * 0.1;
+// --- Pool de Cartuchos Ejetados (Geometria + Material compartilhados) ---
+const _shellGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.04, 6);
+const _shellMat = new THREE.MeshStandardMaterial({ color: 0xd4a836, metalness: 0.8, roughness: 0.3 });
+const SHELL_POOL_SIZE = 15;
+const _shellPool = [];
+for (let i = 0; i < SHELL_POOL_SIZE; i++) {
+  const shell = new THREE.Mesh(_shellGeo, _shellMat);
+  shell.visible = false;
+  shell.frustumCulled = false;
   scene.add(shell);
+  _shellPool.push({ mesh: shell, active: false });
+}
+
+function spawnShellCasing() {
+  let slot = _shellPool.find(s => !s.active);
+  if (!slot) {
+    // Recicla o mais antigo
+    slot = _shellPool[0];
+    for (let i = 0; i < _shellPool.length; i++) {
+      // Encontra um inativo nos hitEffects
+      const idx = hitEffects.findIndex(fx => fx.isShell && fx.pts === _shellPool[i].mesh);
+      if (idx === -1) { slot = _shellPool[i]; break; }
+    }
+    // Remove o efeito antigo do hitEffects
+    const oldIdx = hitEffects.findIndex(fx => fx.pts === slot.mesh);
+    if (oldIdx !== -1) hitEffects.splice(oldIdx, 1);
+  }
+
+  const muzzle = worldMuzzlePosition(currentWeapon());
+  slot.mesh.position.copy(muzzle);
+  slot.mesh.position.x += (Math.random() - 0.5) * 0.1;
+  slot.mesh.rotation.set(0, 0, 0);
+  slot.mesh.visible = true;
+  slot.active = true;
 
   const vel = new THREE.Vector3(
     (Math.random() - 0.3) * 3,
@@ -49,8 +137,8 @@ function spawnShellCasing() {
     (Math.random() - 0.5) * 2
   );
   hitEffects.push({
-    pts: shell, velocities: [vel], life: 1.2, maxLife: 1.2,
-    isShell: true
+    pts: slot.mesh, velocities: [vel], life: 1.2, maxLife: 1.2,
+    isShell: true, _poolSlot: slot
   });
 }
 
@@ -67,16 +155,22 @@ function doShoot() {
   if (reloading) return;
   const ammo = ammoState[currentWeaponIdx];
   if (ammo.inMag <= 0) { tryReload(); return; }
-  if (now - lastShotTime < w.fireRateMs) return;
+  if (now - lastShotTime < w.fireRate * 1000) return;
   lastShotTime = now;
   ammo.inMag--;
   player.accuracy.shots++;
   updateAmmoHud();
 
   applyRecoil(w.recoil);
-  pitch = Math.max(-Math.PI / 2 + 0.05, pitch - w.kick);
+  const kickVal = w.kick || (w.recoil * 0.5);
+  pitch = Math.min(Math.PI / 2 - 0.05, pitch + kickVal);
   pitchObject.rotation.x = pitch;
   playSound(w.sound);
+  
+  if (w.muzzleLocal) {
+    flashSprite.position.copy(w.muzzleLocal);
+    flashSprite.position.z += recoilOffset;
+  }
   flashSprite.visible = true;
   flashSprite.material.rotation = Math.random() * Math.PI;
   setTimeout(() => { flashSprite.visible = false; }, 45);
@@ -117,7 +211,7 @@ function doShoot() {
     if (pellet === 0) spawnTracer(worldMuzzlePosition(w), dir, hitDist);
   }
 
-  addScreenShake(w.kick * 0.3);
+  addScreenShake(kickVal * 0.3);
 }
 
 function registerHit(bot, dmg, point, isHeadshot = false) {

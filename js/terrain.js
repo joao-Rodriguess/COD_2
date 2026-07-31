@@ -109,7 +109,7 @@ function generateTerrainGeometry() {
 
   terrainMesh = new THREE.Mesh(geo, groundMat);
   terrainMesh.receiveShadow = true;
-  terrainMesh.castShadow = true;
+  terrainMesh.castShadow = false;
   scene.add(terrainMesh);
 
   // Estradas / Caminhos Táticos

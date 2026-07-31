@@ -31,11 +31,6 @@ function animate() {
     yawObject.rotation.y = -menuCameraAngle - Math.PI / 2;
     pitchObject.rotation.x = -0.35;
 
-    if (frameCount % 4 === 0) {
-      cubeCamera.position.copy(yawObject.position);
-      cubeCamera.update(renderer, scene);
-      reflectiveMaterials.forEach(m => m.needsUpdate = true);
-    }
     updateAmbientParticles(rawDt);
     renderer.render(scene, camera);
     return;
@@ -68,11 +63,12 @@ function animate() {
   updateDamageIndicators(dt);
   updateScreenShake();
 
-  // Tracers
+  // Tracers (pool-based: desativa e oculta em vez de remover)
   for (let i = tracers.length - 1; i >= 0; i--) {
     tracers[i].life -= dt;
     if (tracers[i].life <= 0) {
-      scene.remove(tracers[i].line);
+      tracers[i].line.visible = false;
+      tracers[i].active = false;
       tracers.splice(i, 1);
     }
   }
@@ -107,17 +103,23 @@ function animate() {
     }
 
     if (fx.life <= 0) {
-      scene.remove(fx.pts);
+      if (fx._poolSlot) {
+        // Devolve cartucho ao pool
+        fx.pts.visible = false;
+        fx._poolSlot.active = false;
+      } else {
+        scene.remove(fx.pts);
+        if (fx.pts.geometry) fx.pts.geometry.dispose();
+        if (fx.pts.material) fx.pts.material.dispose();
+      }
       hitEffects.splice(i, 1);
     }
   }
 
-  // Otimização: reflexões a cada 4 frames
-  if (frameCount % 4 === 0) {
-    cubeCamera.position.copy(yawObject.position);
-    cubeCamera.update(renderer, scene);
-    reflectiveMaterials.forEach(m => m.needsUpdate = true);
-  }
+  // Shadow map segue o jogador para sombras nítidas ao redor
+  sun.position.set(yawObject.position.x + 120, 160, yawObject.position.z + 80);
+  sun.target.position.copy(yawObject.position);
+  sun.target.updateMatrixWorld();
 
   drawMinimap();
   renderer.render(scene, camera);

@@ -283,14 +283,33 @@ function addXp(amount) {
 // IA DOS BOTS — ATUALIZAÇÃO COM LASERS & COMPORTAMENTOS
 // =====================================================================
 
+// Vetores reutilizáveis para evitar GC spikes (pré-alocados)
+const _botDir = new THREE.Vector3();
+const _botToPlayer = new THREE.Vector3();
+const _botMoveDir = new THREE.Vector3();
+const _botNextPos = new THREE.Vector3();
+const _botPlayerPos = new THREE.Vector3();
+const _botPos = new THREE.Vector3();
+let _collidableMeshesCache = [];
+let _collidableMeshesDirty = true;
+
+function markCollidablesDirty() { _collidableMeshesDirty = true; }
+
+function getCollidableMeshes() {
+  if (_collidableMeshesDirty) {
+    _collidableMeshesCache = collidables.map(c => c.mesh);
+    _collidableMeshesDirty = false;
+  }
+  return _collidableMeshesCache;
+}
+
 function hasLineOfSight(fromPos, toPos) {
-  const dir = new THREE.Vector3().subVectors(toPos, fromPos);
-  const dist = dir.length();
-  dir.normalize();
-  raycaster.set(fromPos, dir);
+  _botDir.subVectors(toPos, fromPos);
+  const dist = _botDir.length();
+  _botDir.normalize();
+  raycaster.set(fromPos, _botDir);
   raycaster.far = dist;
-  const meshes = collidables.map(c => c.mesh);
-  const hits = raycaster.intersectObjects(meshes, false);
+  const hits = raycaster.intersectObjects(getCollidableMeshes(), false);
   return hits.length === 0;
 }
 
@@ -315,10 +334,12 @@ function findNearestCover(botPos, playerPos) {
   return best;
 }
 
+let _losThrottleFrame = 0;
+
 function updateBots(dt) {
-  const playerPos = new THREE.Vector3();
-  yawObject.getWorldPosition(playerPos);
-  playerPos.y = 1.2;
+  yawObject.getWorldPosition(_botPlayerPos);
+  _botPlayerPos.y = 1.2;
+  _losThrottleFrame++;
 
   if (uavActive && performance.now() > uavEndTime) {
     uavActive = false;
@@ -327,18 +348,20 @@ function updateBots(dt) {
 
   bots.forEach(bot => {
     if (!bot.alive) return;
-    const botPos = bot.group.position.clone();
-    botPos.y = 1.2;
-    const distToPlayer = botPos.distanceTo(playerPos);
+    _botPos.copy(bot.group.position);
+    _botPos.y = 1.2;
+    const distToPlayer = _botPos.distanceTo(_botPlayerPos);
 
     if (bot.dodgeTimer > 0) {
       bot.dodgeTimer -= dt;
       moveBot(bot, bot.dodgeDir, bot.speed * 2.5 * dt);
     }
 
-    let canSee = false;
-    if (distToPlayer < 65) {
-      canSee = hasLineOfSight(botPos, playerPos);
+    // Throttle raycasts: cada bot roda LOS a cada 3 frames
+    let canSee = bot._lastCanSee || false;
+    if (distToPlayer < 65 && !inPlane && !dropActive && (_losThrottleFrame + bot.id) % 3 === 0) {
+      canSee = hasLineOfSight(_botPos, _botPlayerPos);
+      bot._lastCanSee = canSee;
     }
 
     bot.stateTimer += dt;
@@ -346,10 +369,10 @@ function updateBots(dt) {
     if (canSee && player.alive) {
       if (bot.health < bot.maxHealth * 0.3 && bot.state !== 'retreat') {
         bot.state = 'retreat';
-        bot.coverTarget = findNearestCover(botPos, playerPos);
+        bot.coverTarget = findNearestCover(_botPos, _botPlayerPos);
         bot.stateTimer = 0;
       } else if (bot.type === 'rusher') {
-        bot.state = 'attack'; // Rusher sempre avança com tudo
+        bot.state = 'attack';
       } else if (distToPlayer > 30 && bot.state !== 'flank' && Math.random() < 0.3 && bot.stateTimer > 3) {
         bot.state = 'flank';
         bot.flankAngle = (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 3 + Math.random() * Math.PI / 4);
@@ -369,20 +392,19 @@ function updateBots(dt) {
       }
     }
 
-    // Laser da Sniper
     if (bot.laserLine) {
       bot.laserLine.visible = (canSee && bot.state === 'attack');
     }
 
     switch (bot.state) {
       case 'attack':
-        executeAttack(bot, botPos, playerPos, distToPlayer, dt);
+        executeAttack(bot, _botPos, _botPlayerPos, distToPlayer, dt);
         break;
       case 'flank':
-        executeFlank(bot, botPos, playerPos, distToPlayer, dt);
+        executeFlank(bot, _botPos, _botPlayerPos, distToPlayer, dt);
         break;
       case 'retreat':
-        executeRetreat(bot, botPos, playerPos, distToPlayer, dt);
+        executeRetreat(bot, _botPos, _botPlayerPos, distToPlayer, dt);
         break;
       default:
         executePatrol(bot, dt);
@@ -391,6 +413,7 @@ function updateBots(dt) {
 
     bot.group.position.x = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, bot.group.position.x));
     bot.group.position.z = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, bot.group.position.z));
+    bot.group.position.y = getTerrainHeight(bot.group.position.x, bot.group.position.z);
 
     bot.barFg.scale.x = 1.05 * Math.max(bot.health, 0) / bot.maxHealth;
     bot.barFg.position.x = -1.05 * (1 - Math.max(bot.health, 0) / bot.maxHealth) / 2;
@@ -488,15 +511,16 @@ function executePatrol(bot, dt) {
 }
 
 function moveBot(bot, direction, distance) {
-  const next = bot.group.position.clone().addScaledVector(direction, distance);
+  _botNextPos.copy(bot.group.position).addScaledVector(direction, distance);
   const radius = 0.48;
-  for (const c of collidables) {
-    const box = c.box;
-    const x = Math.max(box.min.x, Math.min(next.x, box.max.x));
-    const z = Math.max(box.min.z, Math.min(next.z, box.max.z));
-    if ((next.x - x) ** 2 + (next.z - z) ** 2 < radius ** 2) return;
+  const rSq = radius * radius;
+  for (let i = 0, len = collidables.length; i < len; i++) {
+    const box = collidables[i].box;
+    const cx = Math.max(box.min.x, Math.min(_botNextPos.x, box.max.x));
+    const cz = Math.max(box.min.z, Math.min(_botNextPos.z, box.max.z));
+    if ((_botNextPos.x - cx) ** 2 + (_botNextPos.z - cz) ** 2 < rSq) return;
   }
-  bot.group.position.copy(next);
+  bot.group.position.copy(_botNextPos);
 }
 
 function botShoot(bot, botPos, playerPos, dist) {

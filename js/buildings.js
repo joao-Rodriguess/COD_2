@@ -880,3 +880,46 @@ function updateInteractionHint() {
   hint.textContent = doorEntry ? '[E] ENTRAR NA ESTRUTURA' : chest ? '[E] SAQUEAR BAÚ' : ladder ? '[E] SUBIR PARA O POSTO' : '';
   hint.classList.toggle('show', !!(doorEntry || chest || ladder));
 }
+
+// =====================================================================
+// POPULAÇÃO PROCEDURAL DE CHUNKS INFINITOS (ESTILO MINECRAFT)
+// =====================================================================
+function decorateChunk(cx, cz, worldX, worldZ) {
+  function hash(a, b) {
+    let h = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453;
+    return h - Math.floor(h);
+  }
+
+  // 1. Árvores e Vegetação Procedural por Chunk
+  const treeCount = Math.floor(hash(cx, cz) * 4) + 1;
+  for (let i = 0; i < treeCount; i++) {
+    const rx = worldX + (hash(cx + i, cz) - 0.5) * (CHUNK_SIZE - 12);
+    const rz = worldZ + (hash(cx, cz + i) - 0.5) * (CHUNK_SIZE - 12);
+    buildJungleGiantTree(rx, rz);
+  }
+
+  // 2. Formações Rochosas
+  const rockCount = Math.floor(hash(cx * 3, cz * 7) * 2) + 1;
+  for (let i = 0; i < rockCount; i++) {
+    const rx = worldX + (hash(cx - i, cz + 2) - 0.5) * (CHUNK_SIZE - 10);
+    const rz = worldZ + (hash(cx + 4, cz - i) - 0.5) * (CHUNK_SIZE - 10);
+    buildRockFormation(rx, rz, 1.0 + hash(i, cx) * 0.8);
+  }
+
+  // 3. Baús de Saque em Chunks
+  if (hash(cx * 9, cz * 13) < 0.35) {
+    const chestX = worldX + (hash(cx, cz) - 0.5) * (CHUNK_SIZE - 14);
+    const chestZ = worldZ + (hash(cz, cx) - 0.5) * (CHUNK_SIZE - 14);
+    addLootChest(chestX, chestZ);
+  }
+
+  // 4. Spawns de Feras e Monstros Selvagens
+  if (typeof spawnBeast === 'function' && hash(cx * 11, cz * 17) < 0.45) {
+    const beastX = worldX + (hash(cx + 7, cz) - 0.5) * (CHUNK_SIZE - 12);
+    const beastZ = worldZ + (hash(cx, cz + 9) - 0.5) * (CHUNK_SIZE - 12);
+    const types = ['crawler', 'crawler', 'fiend', 'juggernaut', 'stalker'];
+    const chosenType = types[Math.floor(hash(cx, cz) * types.length)];
+    spawnBeast(chosenType, beastX, beastZ);
+  }
+}
+

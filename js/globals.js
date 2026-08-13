@@ -101,7 +101,7 @@ let frameCount = 0;
 
 // CONSTANTES & TIME SCALE
 const WORLD_SIZE = 320;
-const MAP_LIMIT = WORLD_SIZE - 4;
+const MAP_LIMIT = 50000; // Mundo Aberto Infinito
 const GRAVITY = -20;
 const JUMP_SPEED = 7.2;
 const TERRAIN_SEGMENTS = 140;
@@ -180,8 +180,17 @@ let pointerLocked = false;
 let recoilOffset = 0;
 let hitmarkerTimeout = null;
 let selectedMap = 'neon_rust';
-
 let menuCameraAngle = 0;
+
+function safeRequestPointerLock() {
+  if (!canvas || !gameRunning || isPaused) return;
+  try {
+    const p = canvas.requestPointerLock();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {});
+    }
+  } catch (_) {}
+}
 
 // AVIÃO DE CARGA
 let dropActive = false;

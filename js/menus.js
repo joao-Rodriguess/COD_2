@@ -267,7 +267,7 @@ function beginGame() {
 
   setWind(true);
   lastTime = performance.now();
-  canvas.requestPointerLock();
+  safeRequestPointerLock();
 
   if (bots.filter(bot => bot.alive).length === 0) {
     for (let i = 0; i < 5; i++) spawnBot();
@@ -362,7 +362,7 @@ function togglePauseMenu() {
     if (pauseMenu) pauseMenu.classList.add('show');
   } else {
     if (pauseMenu) pauseMenu.classList.remove('show');
-    canvas.requestPointerLock();
+    safeRequestPointerLock();
   }
 }
 
@@ -370,7 +370,7 @@ function resumeGame() {
   isPaused = false;
   const pauseMenu = document.getElementById('pauseMenu');
   if (pauseMenu) pauseMenu.classList.remove('show');
-  canvas.requestPointerLock();
+  safeRequestPointerLock();
 }
 
 function restartMatch() {

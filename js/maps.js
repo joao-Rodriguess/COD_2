@@ -406,7 +406,10 @@ function updateAmbientParticles(dt) {
 function updateReflectionMap() {
   if (typeof cubeCamera === 'undefined' || typeof renderer === 'undefined' || typeof cubeRenderTarget === 'undefined') return;
 
-  // Ocultar malhas reflexivas temporariamente para evitar loops de feedback de textura no WebGL
+  // Desativar scene.environment temporariamente para impedir feedback loop de textura WebGL
+  const prevEnv = scene.environment;
+  scene.environment = null;
+
   const hiddenObjects = [];
   scene.traverse(child => {
     if (child.isMesh && child.material) {
@@ -424,13 +427,12 @@ function updateReflectionMap() {
     }
   });
 
-  // Atualizar a câmera de reflexão uma única vez a partir do centro da cena
   cubeCamera.position.set(0, 15, 0);
   cubeCamera.update(renderer, scene);
 
-  // Restaurar visibilidade
   hiddenObjects.forEach(obj => obj.visible = true);
-  
+  scene.environment = prevEnv;
+
   if (typeof reflectiveMaterials !== 'undefined') {
     reflectiveMaterials.forEach(m => m.needsUpdate = true);
   }

@@ -55,12 +55,17 @@ window.addEventListener('keydown', (e) => {
     throwGrenade();
   }
 
-  // Troca de Armas Teclado Numérico
+  // Troca de Armas Teclado Numérico (1 a 0 e roda do mouse)
   if (e.code === 'Digit1' || e.key === '1') switchWeapon(0);
   if (e.code === 'Digit2' || e.key === '2') switchWeapon(1);
   if (e.code === 'Digit3' || e.key === '3') switchWeapon(2);
   if (e.code === 'Digit4' || e.key === '4') switchWeapon(3);
   if (e.code === 'Digit5' || e.key === '5') switchWeapon(4);
+  if (e.code === 'Digit6' || e.key === '6') switchWeapon(5);
+  if (e.code === 'Digit7' || e.key === '7') switchWeapon(6);
+  if (e.code === 'Digit8' || e.key === '8') switchWeapon(7);
+  if (e.code === 'Digit9' || e.key === '9') switchWeapon(8);
+  if (e.code === 'Digit0' || e.key === '0') switchWeapon(9);
 
   // Menu de Pausa (ESC)
   if (e.code === 'Escape') {
@@ -93,7 +98,7 @@ window.addEventListener('wheel', (e) => {
 // Pointer Lock / Mira com Mouse
 canvas.addEventListener('click', () => {
   if (gameRunning && !isPaused && !pointerLocked) {
-    canvas.requestPointerLock();
+    safeRequestPointerLock();
   }
 });
 

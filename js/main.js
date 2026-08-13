@@ -51,13 +51,16 @@ function animate() {
   if (reloading && now >= reloadEndTime) finishReload();
 
   // Updates de gameplay
+  if (typeof updateChunks === 'function') updateChunks(yawObject.position.x, yawObject.position.z);
+  if (typeof updateBeasts === 'function') updateBeasts(dt);
+
   updatePlayerMovement(dt);
   updatePlane(dt);
   updateDrop(dt);
   updateBots(dt);
   updateGrenades(dt);
   updateAirDrops(dt);
-  updatePortals(dt); // Atualização de portais quânticos de teletransporte
+  updatePortals(dt);
   updateAmbientParticles(dt);
   updateInteractionHint();
   updateDamageIndicators(dt);

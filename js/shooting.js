@@ -179,6 +179,28 @@ function doShoot() {
 
   const spreadMult = player.crouching ? 0.6 : player.isSliding ? 1.2 : 1.0;
 
+  // Tratar Lança-Foguetes RPG-7 (Explosivo em Área)
+  if (w.isRocket) {
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    const origin = new THREE.Vector3();
+    camera.getWorldPosition(origin);
+    raycaster.set(origin, dir);
+    raycaster.far = 300;
+
+    const targets = [];
+    bots.forEach(b => { if (b.alive) targets.push(...b.hitMeshes); });
+    if (typeof beasts !== 'undefined') beasts.forEach(b => { if (b.alive) targets.push(...b.hitMeshes); });
+
+    const intersects = raycaster.intersectObjects(targets.concat(collidables.map(c => c.mesh)), false);
+    const targetPos = intersects.length ? intersects[0].point : origin.clone().addScaledVector(dir, 150);
+
+    spawnTracer(worldMuzzlePosition(w), dir, origin.distanceTo(targetPos));
+    explodeGrenade(targetPos);
+    addScreenShake(kickVal * 0.4);
+    return;
+  }
+
   const pellets = w.pellets || 1;
   for (let pellet = 0; pellet < pellets; pellet++) {
     const dir = new THREE.Vector3();
@@ -195,17 +217,25 @@ function doShoot() {
 
     const targets = [];
     bots.forEach(b => { if (b.alive) targets.push(...b.hitMeshes); });
+    if (typeof beasts !== 'undefined') beasts.forEach(b => { if (b.alive) targets.push(...b.hitMeshes); });
+
     const intersects = raycaster.intersectObjects(targets.concat(collidables.map(c => c.mesh)), false);
     let hitDist = 100;
     if (intersects.length) {
       hitDist = intersects[0].distance;
       const hitObj = intersects[0].object;
       const bot = bots.find(b => b.hitMeshes.includes(hitObj));
+      const beast = typeof beasts !== 'undefined' ? beasts.find(b => b.hitMeshes.includes(hitObj)) : null;
+
       if (bot) {
         const head = bot.head === hitObj;
         registerHit(bot, w.damage * (head ? 2 : 1), intersects[0].point, head);
+      } else if (beast) {
+        const head = beast.head === hitObj;
+        damageBeast(beast, w.damage * (head ? 2 : 1), intersects[0].point, head);
+        showHitmarker();
       } else {
-        spawnHitBurst(intersects[0].point, 0xcccccc);
+        spawnHitBurst(intersects[0].point, w.isPlasma ? 0x00ffff : 0xcccccc);
       }
     }
     if (pellet === 0) spawnTracer(worldMuzzlePosition(w), dir, hitDist);

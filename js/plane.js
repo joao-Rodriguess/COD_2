@@ -13,12 +13,12 @@ function buildDetailedCargoPlane() {
   while (interiorGroup.children.length) interiorGroup.remove(interiorGroup.children[0]);
   transportPlane.add(interiorGroup);
 
-  const metalMat = new THREE.MeshStandardMaterial({ color: 0x222a36, metalness: 0.85, roughness: 0.25, envMap: cubeRenderTarget.texture });
+  const metalMat = new THREE.MeshStandardMaterial({ color: 0x222a36, metalness: 0.85, roughness: 0.25 });
   const wallMat = new THREE.MeshStandardMaterial({ color: 0x18202c, roughness: 0.5, metalness: 0.7 });
   const floorMat = new THREE.MeshStandardMaterial({ color: 0x0f141d, roughness: 0.3, metalness: 0.85 });
   const darkMetal = new THREE.MeshStandardMaterial({ color: 0x111620, metalness: 0.9, roughness: 0.3 });
   const redAlertMat = new THREE.MeshBasicMaterial({ color: 0xff1111 });
-  const mirrorGlassMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, metalness: 0.98, roughness: 0.05, envMap: cubeRenderTarget.texture, envMapIntensity: 3.0 });
+  const mirrorGlassMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, metalness: 0.98, roughness: 0.05, envMapIntensity: 2.0 });
   reflectiveMaterials.push(mirrorGlassMat);
 
   const length = 26;
@@ -300,7 +300,9 @@ function updateDrop(dt) {
 
   yawObject.position.y -= 14 * dt;
 
-  const floorY = getTerrainHeight(yawObject.position.x, yawObject.position.z) + 2;
+  const floorY = typeof floorHeightAt === 'function'
+    ? floorHeightAt(yawObject.position.x, yawObject.position.z)
+    : (getTerrainHeight(yawObject.position.x, yawObject.position.z) + 2);
   if (yawObject.position.y <= floorY) {
     yawObject.position.y = floorY;
     player.velocity.y = 0;

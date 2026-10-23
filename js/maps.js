@@ -292,14 +292,30 @@ function createSkyTexture(mapKey) {
 }
 
 function buildDynamicSkyDome(mapKey) {
-  if (currentSkyDome) scene.remove(currentSkyDome);
+  if (currentSkyDome) {
+    scene.remove(currentSkyDome);
+    if (currentSkyDome.geometry) currentSkyDome.geometry.dispose();
+    if (currentSkyDome.material && currentSkyDome.material.map) currentSkyDome.material.map.dispose();
+  }
 
-  const skyGeo = new THREE.SphereGeometry(380, 32, 24);
+  const skyGeo = new THREE.SphereGeometry(450, 32, 24);
   const skyTex = createSkyTexture(mapKey);
-  const skyMat = new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide });
+  skyTex.encoding = THREE.sRGBEncoding;
+  const skyMat = new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false });
 
   currentSkyDome = new THREE.Mesh(skyGeo, skyMat);
   scene.add(currentSkyDome);
+
+  // IBL baseado em PMREM: iluminação global e reflexos em metais e armas
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    pmrem.compileEquirectangularShader();
+    const envTexture = pmrem.fromEquirectangular(skyTex).texture;
+    scene.environment = envTexture;
+    pmrem.dispose();
+  } catch (err) {
+    console.warn("PMREM Sky error:", err);
+  }
 }
 
 // =====================================================================
@@ -404,35 +420,6 @@ function updateAmbientParticles(dt) {
 }
 
 function updateReflectionMap() {
-  if (typeof cubeCamera === 'undefined' || typeof renderer === 'undefined' || typeof cubeRenderTarget === 'undefined') return;
-
-  // Desativar scene.environment temporariamente para impedir feedback loop de textura WebGL
-  const prevEnv = scene.environment;
-  scene.environment = null;
-
-  const hiddenObjects = [];
-  scene.traverse(child => {
-    if (child.isMesh && child.material) {
-      const mats = Array.isArray(child.material) ? child.material : [child.material];
-      let isReflective = false;
-      mats.forEach(mat => {
-        if (mat.envMap === cubeRenderTarget.texture) {
-          isReflective = true;
-        }
-      });
-      if (isReflective) {
-        child.visible = false;
-        hiddenObjects.push(child);
-      }
-    }
-  });
-
-  cubeCamera.position.set(0, 15, 0);
-  cubeCamera.update(renderer, scene);
-
-  hiddenObjects.forEach(obj => obj.visible = true);
-  scene.environment = prevEnv;
-
   if (typeof reflectiveMaterials !== 'undefined') {
     reflectiveMaterials.forEach(m => m.needsUpdate = true);
   }
@@ -442,11 +429,28 @@ function applyMapTheme() {
   const map = MAPS[selectedMap] || MAPS.neon_rust;
   scene.background.setHex(map.sky);
   scene.fog.color.setHex(map.fog);
-  groundMat.color.setHex(map.ground);
-  roadMat.color.setHex(selectedMap === 'neon_rust' ? 0x111622 : selectedMap === 'void_core' ? 0x150826 : selectedMap === 'jungle_temple' ? 0x273b1e : 0x3a3a3e);
+  if (scene.fog && scene.fog.density !== undefined) {
+    const densities = {
+      neon_rust: 0.0095,
+      void_core: 0.0085,
+      jungle_temple: 0.0105,
+      desert: 0.0135,
+      arctic: 0.0100
+    };
+    scene.fog.density = densities[selectedMap] || 0.010;
+  }
+  // Mantém vertex colors brilhantes e fiéis à paleta do bioma
+  if (typeof groundMat !== 'undefined') groundMat.color.setHex(0xffffff);
+  if (typeof roadMat !== 'undefined') {
+    roadMat.color.setHex(selectedMap === 'neon_rust' ? 0x111622 : selectedMap === 'void_core' ? 0x150826 : selectedMap === 'jungle_temple' ? 0x273b1e : 0x3a3a3e);
+  }
   sun.color.setHex(map.sun);
-  hemi.intensity = (selectedMap === 'neon_rust' || selectedMap === 'void_core' || selectedMap === 'arctic') ? .35 : .75;
-  document.getElementById('mapLabel').textContent = 'ZONA: ' + map.name.toUpperCase();
+  hemi.intensity = (selectedMap === 'neon_rust' || selectedMap === 'void_core' || selectedMap === 'arctic') ? 0.45 : 0.8;
+  const mapLabelEl = document.getElementById('mapLabel');
+  if (mapLabelEl) mapLabelEl.textContent = 'ZONA: ' + map.name.toUpperCase();
+
+  if (typeof setTerrainStyle === 'function') setTerrainStyle(selectedMap);
+  if (typeof unloadAllChunks === 'function') unloadAllChunks();
 
   buildMapDecor();
   generateMapStructures(selectedMap);

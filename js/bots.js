@@ -73,7 +73,8 @@ function spawnBot(typeOverride = null) {
     colors[Math.floor(Math.random() * colors.length)],
     botType
   );
-  meshData.group.position.set(x, 0, z);
+  const spawnY = typeof floorHeightAt === 'function' ? (floorHeightAt(x, z) - 2) : (typeof getTerrainHeight === 'function' ? getTerrainHeight(x, z) : 0);
+  meshData.group.position.set(x, spawnY, z);
   scene.add(meshData.group);
 
   const waveScale = 1 + (wave - 1) * 0.1;
@@ -520,6 +521,8 @@ function moveBot(bot, direction, distance) {
     const cz = Math.max(box.min.z, Math.min(_botNextPos.z, box.max.z));
     if ((_botNextPos.x - cx) ** 2 + (_botNextPos.z - cz) ** 2 < rSq) return;
   }
+  const groundY = typeof floorHeightAt === 'function' ? (floorHeightAt(_botNextPos.x, _botNextPos.z) - 2) : (typeof getTerrainHeight === 'function' ? getTerrainHeight(_botNextPos.x, _botNextPos.z) : 0);
+  _botNextPos.y = groundY;
   bot.group.position.copy(_botNextPos);
 }
 

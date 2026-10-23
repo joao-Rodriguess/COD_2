@@ -31,21 +31,26 @@ loadSettings();
 // --- Renderer ---
 const canvas = document.getElementById('gameCanvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+renderer.toneMappingExposure = 1.0;
 
 // --- Scene ---
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x050914);
-scene.fog = new THREE.Fog(0x0c142b, 60, 260);
+// Neblina exponencial: atmosfera volumétrica realista (densidade ajustada por mapa)
+scene.fog = new THREE.FogExp2(0x0c142b, 0.0105);
+
+// Direção global do sol/lua (ajustada por mapa) e uniform de vento compartilhado
+const SUN_DIR = new THREE.Vector3(0.5, 0.8, 0.35).normalize();
+const WIND = { time: { value: 0 }, strength: { value: 1 } };
 
 // --- Camera Rig ---
-const camera = new THREE.PerspectiveCamera(settings.fov, window.innerWidth / window.innerHeight, 0.1, 500);
+const camera = new THREE.PerspectiveCamera(settings.fov, window.innerWidth / window.innerHeight, 0.1, 700);
 const pitchObject = new THREE.Object3D();
 pitchObject.add(camera);
 const yawObject = new THREE.Object3D();
@@ -67,34 +72,29 @@ window.addEventListener('resize', () => {
 });
 
 // --- Luzes ---
-const hemi = new THREE.HemisphereLight(0xbfe0ff, 0x334422, 0.75);
+const hemi = new THREE.HemisphereLight(0xbfe0ff, 0x334422, 0.6);
 scene.add(hemi);
-const ambient = new THREE.AmbientLight(0xdde8ff, 0.35);
+const ambient = new THREE.AmbientLight(0xdde8ff, 0.12);
 scene.add(ambient);
-const sun = new THREE.DirectionalLight(0xfff2d8, 1.05);
+const sun = new THREE.DirectionalLight(0xfff2d8, 1.6);
 sun.position.set(120, 160, 80);
 sun.castShadow = true;
-sun.shadow.camera.left = -80;
-sun.shadow.camera.right = 80;
-sun.shadow.camera.top = 80;
-sun.shadow.camera.bottom = -80;
-sun.shadow.camera.far = 250;
-sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.left = -75;
+sun.shadow.camera.right = 75;
+sun.shadow.camera.top = 75;
+sun.shadow.camera.bottom = -75;
+sun.shadow.camera.near = 20;
+sun.shadow.camera.far = 480;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.06;
 scene.add(sun);
-const fill = new THREE.DirectionalLight(0xadc7ff, 0.42);
+scene.add(sun.target);
+const fill = new THREE.DirectionalLight(0xadc7ff, 0.28);
 fill.position.set(-72, 110, -46);
 scene.add(fill);
 
-// --- Environment Map ---
-const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(128, {
-  format: THREE.RGBAFormat,
-  generateMipmaps: true,
-  minFilter: THREE.LinearMipmapLinearFilter,
-  encoding: THREE.sRGBEncoding
-});
-const cubeCamera = new THREE.CubeCamera(0.1, 1200, cubeRenderTarget);
-scene.add(cubeCamera);
-scene.environment = cubeRenderTarget.texture;
+// --- Ambiente (IBL) — gerado a partir do céu procedural via PMREM em maps.js ---
 const reflectiveMaterials = [];
 
 let frameCount = 0;

@@ -18,6 +18,11 @@ function animate() {
 
   frameCount++;
 
+  // Atualização do vento global (anima vegetação, grama e partículas)
+  if (typeof WIND !== 'undefined' && WIND.time) {
+    WIND.time.value += rawDt * 1.8;
+  }
+
   // --- MODO MENU PRINCIPAL (Câmera 3D em Órbita Cinemática) ---
   if (!gameRunning) {
     menuCameraAngle += rawDt * 0.15;
@@ -31,6 +36,8 @@ function animate() {
     yawObject.rotation.y = -menuCameraAngle - Math.PI / 2;
     pitchObject.rotation.x = -0.35;
 
+    if (typeof updateChunks === 'function') updateChunks(0, 0);
+    if (typeof updateAnimatedProps === 'function') updateAnimatedProps(rawDt);
     updateAmbientParticles(rawDt);
     renderer.render(scene, camera);
     return;
@@ -61,10 +68,23 @@ function animate() {
   updateGrenades(dt);
   updateAirDrops(dt);
   updatePortals(dt);
+  if (typeof updateAnimatedProps === 'function') updateAnimatedProps(dt);
   updateAmbientParticles(dt);
   updateInteractionHint();
   updateDamageIndicators(dt);
   updateScreenShake();
+
+  // Efeito pulsante de baixa vida cinematográfico
+  const lowHealthEl = document.getElementById('lowHealthVignette');
+  if (lowHealthEl) {
+    if (player.alive && player.health < 40) {
+      const pulse = 0.75 + Math.sin(performance.now() * 0.008) * 0.25;
+      const intensity = ((1 - player.health / 40) * pulse).toFixed(3);
+      lowHealthEl.style.opacity = intensity;
+    } else {
+      lowHealthEl.style.opacity = '0';
+    }
+  }
 
   // Tracers (pool-based: desativa e oculta em vez de remover)
   for (let i = tracers.length - 1; i >= 0; i--) {
@@ -141,5 +161,6 @@ updateXpHud();
 updateStreakHud();
 updateWaveHud();
 applyMapTheme();
+if (typeof updateChunks === 'function') updateChunks(0, 0, true);
 showMainMenu();
 animate();

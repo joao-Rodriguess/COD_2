@@ -219,9 +219,15 @@ function doShoot() {
     bots.forEach(b => { if (b.alive) targets.push(...b.hitMeshes); });
     if (typeof beasts !== 'undefined') beasts.forEach(b => { if (b.alive) targets.push(...b.hitMeshes); });
 
+    let terrainDist = -1;
+    if (typeof raycastTerrain === 'function') {
+      terrainDist = raycastTerrain(origin, dir, 260);
+    }
+
     const intersects = raycaster.intersectObjects(targets.concat(collidables.map(c => c.mesh)), false);
-    let hitDist = 100;
-    if (intersects.length) {
+    let hitDist = (terrainDist > 0) ? terrainDist : 160;
+
+    if (intersects.length && (terrainDist < 0 || intersects[0].distance < terrainDist)) {
       hitDist = intersects[0].distance;
       const hitObj = intersects[0].object;
       const bot = bots.find(b => b.hitMeshes.includes(hitObj));
@@ -237,8 +243,22 @@ function doShoot() {
       } else {
         spawnHitBurst(intersects[0].point, w.isPlasma ? 0x00ffff : 0xcccccc);
       }
+    } else if (terrainDist > 0) {
+      const terrainHitPos = origin.clone().addScaledVector(dir, terrainDist);
+      const dustColors = {
+        desert: 0xd4a853,
+        arctic: 0xddeeff,
+        jungle_temple: 0x446622,
+        void_core: 0x8833cc,
+        neon_rust: 0x778899
+      };
+      const burstCol = w.isPlasma ? 0x00ffff : (dustColors[selectedMap] || 0x999999);
+      spawnHitBurst(terrainHitPos, burstCol);
     }
-    if (pellet === 0) spawnTracer(worldMuzzlePosition(w), dir, hitDist);
+
+    if (pellet === 0 || (pellets > 1 && pellet % 2 === 0)) {
+      spawnTracer(worldMuzzlePosition(w), dir, hitDist);
+    }
   }
 
   addScreenShake(kickVal * 0.3);
